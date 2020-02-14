@@ -727,7 +727,7 @@ function draw:compassRibbon()
     local heading = mavsdk.getAttYawDeg() --getVfrHeading()
     local y = self.compassRibbonY
     -- compass ribbon
-    -- this code part is based on Yaapu FrSky Telemetry Script
+    -- this piece of code is based on Yaapu FrSky Telemetry Script, much improved
     local minX = self.xmid - 110 -- make it smaller than hud by at least one char size
     local maxX = self.xmid + 110 
     local tickNo = 3 --number of ticks on one side
@@ -863,7 +863,7 @@ function draw:batteryStatus()
     local current = mavsdk.getBat1Current()
     local remaining = mavsdk.getBat1Remaining()
     local charge = mavsdk.getBat1ChargeConsumed()
-    local y = 30 --self.batteryY
+    local y = 30
     -- voltage
     lcd.setColor(CUSTOM_COLOR, p.WHITE) 
     lcd.drawNumber(self.xsize-18, y, voltage*100, CUSTOM_COLOR+DBLSIZE+RIGHT+PREC2)
@@ -964,6 +964,7 @@ local camera_menu = { active = false, idx = 0 }
 
 local function camera_menu_set()
     if not mavsdk.cameraIsInitialized then return 0 end
+    
     if camera_menu.idx == 1 then
         mavsdk.cameraSetPhotoMode()
         playPhotoMode()
@@ -977,7 +978,6 @@ local function camera_menu_set()
 end
 
 local function cameraDoAlways(bkgrd)
-    --if not mavsdk.cameraIsReceiving() then return end
     if not mavsdk.cameraIsInitialized then return end
 
     camera_shoot_switch_triggered = false
@@ -1462,8 +1462,6 @@ end
 
 
 local function doPageNeedsFullSize(widget)
-    --lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
-    --lcd.clear(CUSTOM_COLOR)
     event = 0
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawFilledRectangle(widget.zone.x+10, widget.zone.y+10, widget.zone.w-20, widget.zone.h-20, CUSTOM_COLOR)
@@ -1564,8 +1562,9 @@ local function widgetRefresh(widget)
         doPageGimbal()
     end  
     
+  
     -- do this post so that the pages can overwrite RTN & SYS use
-    if event == EVT_RTN_FIRST then --or event == EVT_RTN_LONG then
+    if event == EVT_RTN_FIRST then
         page = page + 1
         if page > page_max then page = page_max end
     elseif event == EVT_SYS_FIRST then
