@@ -1,4 +1,4 @@
-#OlliW Telemetry Widget Script for OpenTx with MAVlink
+OlliW Telemetry Widget Script for OpenTx with MAVlink
 ===========
 
 The project brings MAVLink telemetry capabilities to OpenTx.
