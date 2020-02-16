@@ -5,11 +5,11 @@ The project brings MAVLink telemetry capabilities to OpenTx.
 
 Project home page: http://www.olliw.eu/2020/olliwtelem
 
-Discussion thread: tbd
+Discussion thread: https://www.rcgroups.com/forums/showthread.php?3532467-Telemetry-Script-for-OpenTx-with-MAVLink
 
 ## Installation
 
-tbd
+For the moment please visit the project web page for descriptions.
 
 ## Licence
 
