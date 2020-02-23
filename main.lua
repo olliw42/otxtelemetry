@@ -284,7 +284,7 @@ local status_g = {
 
 -- this is function called always, also when there is no connection
 local function checkStatusChanges()
-    if status_g.recieving == nil or status_g.recieving ~= mavsdk.isReceiving() then -- first call or change occured
+    if status_g.recieving == nil or status_g.recieving ~= mavsdk.isReceiving() then -- first call or change
         if status_g.recieving == nil then -- first call
             if mavsdk.isReceiving() then playTelemOk() else playTelemNo() end
         else -- change occured    
@@ -294,16 +294,20 @@ local function checkStatusChanges()
     end
   
     if status_g.armed == nil or status_g.armed ~= mavsdk.isArmed() then -- first call or change occured
+        local play = (status_g.armed ~= nil)
         status_g.armed = mavsdk.isArmed()
         if status_g.armed then
+            if play then playArmed() end
             status_g.flight_timer_start_10ms = getTime() --if it was nil that's the best guess we can do
+        else
+            if play then playDisarmed() end
         end    
     end
     if status_g.armed then
         status_g.flight_time_10ms = getTime() - status_g.flight_timer_start_10ms
     end    
     
-    if status_g.flightmode == nil or status_g.flightmode ~= mavsdk.getFlightMode() then -- first call or change occured
+    if status_g.flightmode == nil or status_g.flightmode ~= mavsdk.getFlightMode() then -- first call or change
         status_g.flightmode = mavsdk.getFlightMode()
         if mavsdk.isReceiving() then playFlightModeSound() end
     end
