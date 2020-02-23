@@ -188,6 +188,7 @@ apPlaneFlightModes[19]  = { "QLoiter",      "fmqloit" }
 apPlaneFlightModes[20]  = { "QLand",        "fmqland" }
 apPlaneFlightModes[21]  = { "QRTL",         "fmqrtl" }
 apPlaneFlightModes[22]  = { "QAutotune",    "fmqat" }
+apPlaneFlightModes[23]  = { "QAcro",        "" }
 
 local apCopterFlightModes = {}
 apCopterFlightModes[0]  = { "Stabilize",    "fmstab" }
@@ -209,6 +210,12 @@ apCopterFlightModes[18] = { "Throw",        "fmthrow" }
 apCopterFlightModes[19] = { "Avoid ADSB",   "fmavoid" }
 apCopterFlightModes[20] = { "Guided noGPS", "fmgnogps" }
 apCopterFlightModes[21] = { "Smart RTL",    "fmsmrtrtl" }
+apCopterFlightModes[22] = { "FlowHold",     "" }
+apCopterFlightModes[23] = { "Follow",       "" }
+apCopterFlightModes[24] = { "ZigZag",       "" }
+apCopterFlightModes[25] = { "SystemId",     "" }
+apCopterFlightModes[26] = { "Autorotate",   "" }
+
 
 
 local function getFlightModeStr()
