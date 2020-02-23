@@ -28,7 +28,6 @@ local config_g = {
     showPrearmPage = true,
     
     -- Set to true if you want to see the Camera page, else set to false
-    -- comment: this is not yet effictive, Camera page is always shown
     showCameraPage = true,
     
     -- Set to true if you want to see the Gimbal page, else set to false
@@ -115,13 +114,29 @@ local function playGpsPointTargeting() play("ggpspnt") end
 local function playSysIdTargeting() play("gsysid") end    
 
 
+local pageCameraEnabled = config_g.showCameraPage
+local pageGimbalEnabled = config_g.showGimbalPage
+local pagePrearmEnabled = config_g.showPrearmPage
+local pageQuickshotEnabled = true
+
+
 local event = 0
 local page = 1
 local page_min = 1
-local page_max = 3
+local page_max = 0
 
-if config_g.showPrearmPage then page_min = 0 end
-if not config_g.showGimbalPage then page_max = 2 end
+local cPageIdAutopilot = 1
+local cPageIdCamera = 2
+local cPageIdGimbal = 3
+local cPageIdPrearm = 4
+local cPageIdQuickshot = 5
+
+local pages = {}
+--if pagePrearmEnabled then page_max = page_max+1; pages[page_max] = cPageIdPrearm end
+if pageQuickshotEnabled then page_max = page_max+1; pages[page_max] = cPageIdQuickshot; end
+page_max = page_max+1; pages[page_max] = cPageIdAutopilot; page = page_max
+if pageCameraEnabled then page_max = page_max+1; pages[page_max] = cPageIdCamera end
+if pageGimbalEnabled then page_max = page_max+1; pages[page_max] = cPageIdGimbal end
 
 
 local function getVehicleClassStr()
@@ -1392,7 +1407,7 @@ end
 
 
 ----------------------------------------------------------------------
--- Page Prearm (page 0) Draw Class
+-- Page Prearm Draw Class
 ----------------------------------------------------------------------
 
 local function doPagePrearm()
@@ -1452,6 +1467,20 @@ local function doPagePrearm()
 end  
 
 
+
+----------------------------------------------------------------------
+-- Page QuickShot Draw Class
+----------------------------------------------------------------------
+
+local function doPageQuickshot()
+    if not mavsdk.isReceiving() then return end
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawText(draw.xmid, 20-4, "QUICK SHOT", CUSTOM_COLOR+DBLSIZE+CENTER)
+    
+end  
+
+
+
 ----------------------------------------------------------------------
 -- InMenu, FullSize Pages
 ----------------------------------------------------------------------
@@ -1503,8 +1532,8 @@ local function doAlways(bkgrd)
 
     checkStatusChanges()
     
-    cameraDoAlways(bkgrd)
-    gimbalDoAlways()
+    if pageCameraEnabled then cameraDoAlways(bkgrd) end
+    if pageGimbalEnabled then gimbalDoAlways() end
 end
 
 
@@ -1550,29 +1579,32 @@ local function widgetRefresh(widget)
     
     doAlways(0)
     
-    if page == 0 then
+    if pages[page] == cPageIdAutopilot then
         lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
-    elseif page == 1 then
-        lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
-    elseif page == 2 then   
+    elseif pages[page] == cPageIdCamera then   
         lcd.setColor(CUSTOM_COLOR, p.CAMERA_BACKGROUND)
-    elseif page == 3 then   
+    elseif pages[page] == cPageIdGimbal then   
         lcd.setColor(CUSTOM_COLOR, p.GIMBAL_BACKGROUND)
+    elseif pages[page] == cPageIdPrearm then
+        lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
+    elseif pages[page] == cPageIdQuickshot then
+        lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
     end  
     lcd.clear(CUSTOM_COLOR)
     
     drawStatusBar()
 
-    if page == 0 then
-        doPagePrearm()
-    elseif page == 1 then
+    if pages[page] == cPageIdAutopilot then
         doPageAutopilot()
-    elseif page == 2 then   
+    elseif pages[page] == cPageIdCamera then   
         doPageCamera()
-    elseif page == 3 then   
+    elseif pages[page] == cPageIdGimbal then   
         doPageGimbal()
+    elseif pages[page] == cPageIdPrearm then
+        doPagePrearm()
+    elseif pages[page] == cPageIdQuickshot then
+        doPageQuickshot()
     end  
-    
   
     -- do this post so that the pages can overwrite RTN & SYS use
     if event == EVT_RTN_FIRST then
