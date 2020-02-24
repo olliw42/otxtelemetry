@@ -49,3 +49,7 @@ SOUNDS/OlliWTel/en|fmbrake|Brake flight mode
 SOUNDS/OlliWTel/en|fmthrow|Throw flight mode
 SOUNDS/OlliWTel/en|fmgnogps|Guided no gps flight mode
 SOUNDS/OlliWTel/en|fmsmrtrtl|Smart return to home flight mode
+SOUNDS/OlliWTel/en|fmchanged|Flight mode changed
+SOUNDS/OlliWTel/en|wthr|Throttle WarninG!
+SOUNDS/OlliWTel/en|qsccam|cable cam started
+SOUNDS/OlliWTel/en|qsccapr|approaching cable
