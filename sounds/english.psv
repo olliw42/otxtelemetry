@@ -1,10 +1,11 @@
+SOUNDS/OlliWTel/en|intro|Olli-W telemetry initialized
+SOUNDS/OlliWTel/en|nomtel|Mavlink telemetry not enabled
 SOUNDS/OlliWTel/en|armed|Armed
 SOUNDS/OlliWTel/en|disarmed|Disarmed
 SOUNDS/OlliWTel/en|telok|Telemetry okaY
 SOUNDS/OlliWTel/en|telno|No telemetry connection
 SOUNDS/OlliWTel/en|tellost|Telemetry lost
 SOUNDS/OlliWTel/en|telrec|Telemetry recovered
-SOUNDS/OlliWTel/en|intro|Olli-W telemetry initialized
 SOUNDS/OlliWTel/en|vidon|video recording started
 SOUNDS/OlliWTel/en|vidoff|video recording stopped
 SOUNDS/OlliWTel/en|photo|photo takeN
