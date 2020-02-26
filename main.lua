@@ -3,7 +3,7 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.0.4, 2020-02-14
+-- Version: 0.0.5, 2020-02-26
 --
 -- Documentation:
 --
@@ -62,7 +62,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.0.4 2020-02-25"
+local versionStr = "0.0.5 2020-02-26"
 
 
 ----------------------------------------------------------------------
@@ -1065,7 +1065,7 @@ local autopilot_showstatustext_tmo = 0
 
 local function doPageAutopilot()
     local tnow = getTime()
-    if event == EVT_TELEM_REPT then autopilot_showstatustext_tmo = tnow end  
+    if event == EVT_TELEM_LONG or event == EVT_TELEM_REPT then autopilot_showstatustext_tmo = tnow end  
     if tnow - autopilot_showstatustext_tmo < 50 then 
         drawAllStatusTextMessages()
         return
@@ -1499,7 +1499,6 @@ local function doPageGimbal()
         lcd.drawNumber(400, 100, gimbal_pitch_cntrl_deg, CUSTOM_COLOR+XXLSIZE+CENTER)
         if gimbal_mode == 2 then 
             local cangle = gimbal_pitch_cntrl_deg
-            --drawCircle(x + (r-10)*math.cos(cangle*math.pi/180), y - (r-10)*math.sin(cangle*math.pi/180), 7)
             drawCircle(x + (r-10)*math.cos(math.rad(cangle)), y - (r-10)*math.sin(math.rad(cangle)), 7)
         end    
     end    
@@ -1508,7 +1507,6 @@ local function doPageGimbal()
     local gangle = pitch
     if gangle > 10 then gangle = 10 end
     if gangle < -100 then gangle = -100 end
-    --fillCircle(x + (r-10)*math.cos(gangle*math.pi/180), y - (r-10)*math.sin(gangle*math.pi/180), 5)
     fillCircle(x + (r-10)*math.cos(math.rad(gangle)), y - (r-10)*math.sin(math.rad(gangle)), 5)
     
     y = 239
@@ -1593,7 +1591,7 @@ end
 -- Page QuickShot Draw Class
 ----------------------------------------------------------------------
 local debug = false
---debug = true
+debug = true
 
 local pointA = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
 local pointB = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
@@ -1748,7 +1746,7 @@ local function doPageQuickshotRunning()
     local cur_lon = mavsdk.getPositionLatLonInt().lon
     local cur_yaw = mavsdk.getPositionHeadingDeg()
     if debug then
-      cur_lat = 480674000; cur_lon = 78770000; cur_yaw = 72
+        cur_lat = 480674000; cur_lon = 78770000; --cur_yaw = 72
     end  
     
     if cablecam_state <= 1 then
@@ -1822,7 +1820,7 @@ local function doPageQuickshotRunning()
     if pV_y < draw.ymid-100 then pV_y = draw.ymid-100 end
     if pV_y > draw.ymid+100 then pV_y = draw.ymid+100 end
     lcd.setColor(CUSTOM_COLOR, p.DARKRED)
-    fillCircle(pV_x, pV_y, 6)
+    fillCircle(pV_x, pV_y, 5)
     lcd.drawLine(pV_x, pV_y,
                  pV_x + 16*math.sin(math.rad(cur_yaw)), pV_y - 16*math.cos(math.rad(cur_yaw)),
                  SOLID, CUSTOM_COLOR)
@@ -2015,10 +2013,7 @@ local function widgetRefresh(widget)
     drawNoTelemetry()
     
     -- y = 256 is the smallest for normal sized text ??? really ???, no, if there is undersling
-    -- normal font is 13 pix height
-    --lcd.drawText(1, 243, "STATUSTEXT", CUSTOM_COLOR)
-    --lcd.drawText(1, 256, "STATUSTEXT", CUSTOM_COLOR)
-    -- this will go, but for the moment we have space for such nonsense
+    -- normal font is 13 pix height => 243, 256
     if pages[page] == cPageIdAutopilot and #statustext < 3 then
         lcd.setColor(CUSTOM_COLOR, p.GREY)
         lcd.drawText(LCD_W/2, 256, "OlliW Telemetry Script  "..versionStr, CUSTOM_COLOR+SMLSIZE+CENTER)
