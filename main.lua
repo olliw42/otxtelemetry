@@ -62,7 +62,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.0.5 2020-02-26"
+local versionStr = "0.0.7rc 2020-02-28"
 
 
 ----------------------------------------------------------------------
@@ -268,6 +268,7 @@ apCopterFlightModes[25] = { "SystemId",     "fmchanged" }
 apCopterFlightModes[26] = { "Autorotate",   "fmchanged" }
 
 apCopterFlightModeAltHold = 2
+apCopterFlightModeAuto = 3
 apCopterFlightModeGuided = 4
 apCopterFlightModeLoiter = 5
 apCopterFlightModePosHold = 16
@@ -284,7 +285,6 @@ local function getFlightModeStr()
     if fmstr == nil then fmstr = "unknown" end
     return fmstr
 end    
-
 
 local function playFlightModeSound()
     local fm = mavsdk.getFlightMode();
@@ -316,9 +316,14 @@ local function getGpsFixStr()
     return gpsFixes[gf]
 end    
 
+local function getGps2FixStr()
+    local gf = mavsdk.getGps2Fix();
+    return gpsFixes[gf]
+end    
+
 
 local statustextSeverity = {}
-statustextSeverity[0] = { "EMR", p.DARKRED }
+statustextSeverity[0] = { "EMR", p.RED }
 statustextSeverity[1] = { "ALR", p.RED }
 statustextSeverity[2] = { "CRT", p.RED }
 statustextSeverity[3] = { "ERR", p.RED }
@@ -336,20 +341,30 @@ local function clearStatustext()
 end
 
 local function addStatustext(txt,sev)
+    if statustext_idx > 0 and statustext[statustext_idx][1] == txt then -- this is the same as before
+        statustext[statustext_idx][3] = statustext[statustext_idx][3] + 1
+        return
+    end  
     statustext_idx = (statustext_idx % 12) + 1 -- (((statustext_idx-1) + 1) % 10) + 1
     if statustext[statustext_idx] == nil then
         statustext[statustext_idx] = {}
     end
     statustext[statustext_idx][1] = txt
     statustext[statustext_idx][2] = sev
+    statustext[statustext_idx][3] = 1
 end    
 
 local function printStatustext(idx, x, y, att)
     if idx < 1 or idx > #statustext then return end 
     local sev = statustext[idx][2]
     lcd.setColor(CUSTOM_COLOR, statustextSeverity[sev][2])
-    local txt = statustext[idx][1]
-    lcd.drawText(x, y, txt, CUSTOM_COLOR+att)
+    if statustext[idx][3] > 1 then
+        local txt = string.format("%s (%dx)", statustext[idx][1], statustext[idx][3])
+        lcd.drawText(x, y, txt, CUSTOM_COLOR+att)
+    else
+        lcd.drawText(x, y, statustext[idx][1], CUSTOM_COLOR+att)
+    end  
+    
 end    
 
 local function printStatustextLast(x, y, att)
@@ -361,13 +376,9 @@ local function printStatustextAt(idx, cnt, x, y, att)
     if statustext_idx == 0 then return end 
     if cnt > #statustext then cnt = #statustext end
     if idx > cnt then return end
-    
-    --idx = ((statustext_idx-1)-(cnt-1)+(idx-1)) % 12 + 1
-    idx = (statustext_idx - cnt + idx - 1) % 12 + 1
-  
+    idx = (statustext_idx - cnt + idx - 1) % 12 + 1 --idx = ((statustext_idx-1)-(cnt-1)+(idx-1)) % 12 + 1
     printStatustext(idx, x, y, att)
 end    
-
 
 
 ----------------------------------------------------------------------
@@ -389,7 +400,7 @@ local status_g = {
 }
 
 
--- this is function called always, also when there is no connection
+-- this function is called always, also when there is no connection
 local function checkStatusChanges()
     if status_g.mavtelemEnabled == nil or status_g.mavtelemEnabled ~= mavsdk.mavtelemIsEnabled() then
         status_g.mavtelemEnabled = mavsdk.mavtelemIsEnabled()
@@ -664,6 +675,7 @@ local function drawNoTelemetry()
 end
 
 
+-- this is common to all pages
 local function drawStatusBar()
     local x
     local y = -1
@@ -717,15 +729,15 @@ end
 
 
 ----------------------------------------------------------------------
--- Page Autopilot (page 1) Draw Class
+-- Page Autopilot Draw Class
 ----------------------------------------------------------------------
 
-function draw:hud()
+local function drawHud()
     local pitch = mavsdk.getAttPitchDeg()
     local roll = mavsdk.getAttRollDeg()
   
-    local minY = self.hudY
-    local maxY = self.hudY + self.hudHeight
+    local minY = draw.hudY
+    local maxY = draw.hudY + draw.hudHeight
     local minX = 120
     local maxX = 360
   
@@ -830,27 +842,27 @@ function draw:hud()
 end
 
 
-function draw:compassRibbon()
+local function drawCompassRibbon()
     local heading = mavsdk.getAttYawDeg() --getVfrHeadingDeg()
-    local y = self.compassRibbonY
+    local y = draw.compassRibbonY
     -- compass ribbon
     -- this piece of code is based on Yaapu FrSky Telemetry Script, much improved
-    local minX = self.xmid - 110 -- make it smaller than hud by at least one char size
-    local maxX = self.xmid + 110 
+    local minX = draw.xmid - 110 -- make it smaller than hud by at least one char size
+    local maxX = draw.xmid + 110 
     local tickNo = 3 --number of ticks on one side
     local stepWidth = (maxX - minX -24)/(2*tickNo)
     local closestHeading = math.floor(heading/22.5) * 22.5
-    local closestHeadingX = self.xmid + (closestHeading - heading)/22.5 * stepWidth
+    local closestHeadingX = draw.xmid + (closestHeading - heading)/22.5 * stepWidth
     local tickIdx = (closestHeading/22.5 - tickNo) % 16
     local tickX = closestHeadingX - tickNo*stepWidth   
     for i = 1,12 do
         if tickX >= minX and tickX < maxX then
-            if self.compassTicks[tickIdx+1] == nil then
+            if draw.compassTicks[tickIdx+1] == nil then
                 lcd.setColor(CUSTOM_COLOR, p.BLACK)
                 lcd.drawLine(tickX, y, tickX, y+10, SOLID, CUSTOM_COLOR)
             else
                 lcd.setColor(CUSTOM_COLOR, p.BLACK)
-                lcd.drawText(tickX, y-3, self.compassTicks[tickIdx+1], CUSTOM_COLOR+CENTER)
+                lcd.drawText(tickX, y-3, draw.compassTicks[tickIdx+1], CUSTOM_COLOR+CENTER)
             end
         end
         tickIdx = (tickIdx + 1) % 16
@@ -865,16 +877,19 @@ function draw:compassRibbon()
         w = 40
     end
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
-    lcd.drawFilledRectangle(self.xmid - (w/2), y, w, 28, CUSTOM_COLOR+SOLID)
+    lcd.drawFilledRectangle(draw.xmid - (w/2), y, w, 28, CUSTOM_COLOR+SOLID)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
-    lcd.drawNumber(self.xmid, y-6, heading, CUSTOM_COLOR+DBLSIZE+CENTER)
+    lcd.drawNumber(draw.xmid, y-6, heading, CUSTOM_COLOR+DBLSIZE+CENTER)
 end
 
 
-function draw:groundSpeed()
+local function drawGroundSpeed()
     local groundSpeed = mavsdk.getVfrGroundSpeed()
-    local y = self.groundSpeedY
-    local x = self.xmid - 120
+    local y = draw.groundSpeedY
+    local x = draw.xmid - 120
+    
+    lcd.setColor(CUSTOM_COLOR, p.BLACK)
+    lcd.drawText(x, y-17+2, "SPD", CUSTOM_COLOR+SMLSIZE)
     
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
     lcd.drawFilledRectangle(x, y, 70, 28, CUSTOM_COLOR+SOLID)
@@ -887,16 +902,19 @@ function draw:groundSpeed()
 end
 
 
-function draw:altitude()
+local function drawAltitude()
     local altitude = mavsdk.getPositionAltitudeRelative() --getVfrAltitudeMsl()
-    local y = self.altitudeY
-    local x = self.xmid + 120
+    local y = draw.altitudeY
+    local x = draw.xmid + 120
+
+    lcd.setColor(CUSTOM_COLOR, p.BLACK)
+    lcd.drawText(x, y-17+2, "ALT", CUSTOM_COLOR+SMLSIZE+RIGHT)
 
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
     lcd.drawFilledRectangle(x - 70, y, 70, 28, CUSTOM_COLOR+SOLID)
     lcd.setColor(CUSTOM_COLOR, p.GREEN)
     if math.abs(altitude) > 99 or altitude < -99 then
-        lcd.drawNumber(x-2, y-6, altitude, CUSTOM_COLOR+MIDSIZE+RIGHT)
+        lcd.drawNumber(x-2, y, altitude, CUSTOM_COLOR+MIDSIZE+RIGHT)
     elseif math.abs(altitude) >= 10 then
         lcd.drawNumber(x-2, y-6, altitude, CUSTOM_COLOR+DBLSIZE+RIGHT)
     else
@@ -905,26 +923,24 @@ function draw:altitude()
 end    
 
 
-function draw:verticalSpeed()
+local function drawVerticalSpeed()
     local verticalSpeed = mavsdk.getVfrClimbRate()
-    local y = self.verticalSpeedY
+    local y = draw.verticalSpeedY
 
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
-    lcd.drawFilledRectangle(self.xmid - 30, y, 60, 20, CUSTOM_COLOR+SOLID)
+    lcd.drawFilledRectangle(draw.xmid - 30, y, 60, 20, CUSTOM_COLOR+SOLID)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)  
-   
     local w = 3
     if math.abs(verticalSpeed) > 999 then w = 4 end
     if verticalSpeed < 0 then w = w + 1 end
-  
-    lcd.drawNumber(self.xmid, y-5, verticalSpeed*10, CUSTOM_COLOR+MIDSIZE+CENTER+PREC1)
+    lcd.drawNumber(draw.xmid, y-5, verticalSpeed*10, CUSTOM_COLOR+MIDSIZE+CENTER+PREC1)
 end
 
 
-function draw:gpsStatus()
-    local gpsfix = mavsdk.getGpsFix()
+local function _draw_gps1()
     local y = 30
     -- GPS fix
+    local gpsfix = mavsdk.getGpsFix()
     if gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
         lcd.setColor(CUSTOM_COLOR, p.GREEN)
     else
@@ -934,7 +950,7 @@ function draw:gpsStatus()
     -- Sat
     local gpssat = mavsdk.getGpsSat()
     if gpssat > 99 then gpssat = 0 end
-    if gpssat > 5 then
+    if gpssat > 5 and gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
         lcd.setColor(CUSTOM_COLOR, p.GREEN)
     else
         lcd.setColor(CUSTOM_COLOR, p.RED)
@@ -948,14 +964,76 @@ function draw:gpsStatus()
         lcd.drawNumber(55, y+35, hdop, CUSTOM_COLOR+DBLSIZE)
     else  
         lcd.drawNumber(55, y+35, hdop*10, CUSTOM_COLOR+DBLSIZE+PREC1)
-    end  
+    end
 end  
 
 
-function draw:speeds()
+local function drawGpsStatus()
+    if not mavsdk.isGps2Available() then _draw_gps1(); return end  
+    
+    local y = 13
+    -- GPS fix
+    local gpsfix = mavsdk.getGpsFix()
+    if gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
+        lcd.setColor(CUSTOM_COLOR, p.GREEN)
+    else
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+    end  
+    lcd.drawText(2, y+8, getGpsFixStr(), CUSTOM_COLOR+MIDSIZE+LEFT)
+    -- Sat
+    local gpssat = mavsdk.getGpsSat()
+    if gpssat > 99 then gpssat = 0 end
+    if gpssat > 5 and gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
+        lcd.setColor(CUSTOM_COLOR, p.GREEN)
+    else
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+    end
+    lcd.drawNumber(5, y+30, gpssat, CUSTOM_COLOR+DBLSIZE)
+    -- HDop
+    local hdop = mavsdk.getGpsHDop()
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if hdop >= 10 then
+        if hdop > 99 then hdop = 99 end
+        lcd.drawNumber(55, y+30, hdop, CUSTOM_COLOR+DBLSIZE)
+    else  
+        lcd.drawNumber(55, y+30, hdop*10, CUSTOM_COLOR+DBLSIZE+PREC1)
+    end
+    
+    y = y + 60
+    -- GPS2 fix
+    gpsfix = mavsdk.getGps2Fix()
+    if gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
+        lcd.setColor(CUSTOM_COLOR, p.GREEN)
+    else
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+    end  
+    lcd.drawText(2, y+8, getGps2FixStr(), CUSTOM_COLOR+MIDSIZE+LEFT)
+    -- GPS2 Sat
+    gpssat = mavsdk.getGps2Sat()
+    if gpssat > 99 then gpssat = 0 end
+    if gpssat > 5 and gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
+        lcd.setColor(CUSTOM_COLOR, p.GREEN)
+    else
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+    end
+    lcd.drawNumber(5, y+30, gpssat, CUSTOM_COLOR+DBLSIZE)
+    -- GPS2 HDop
+    hdop = mavsdk.getGps2HDop()
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if hdop >= 10 then
+        if hdop > 99 then hdop = 99 end
+        lcd.drawNumber(55, y+30, hdop, CUSTOM_COLOR+DBLSIZE)
+    else  
+        lcd.drawNumber(55, y+30, hdop*10, CUSTOM_COLOR+DBLSIZE+PREC1)
+    end
+end  
+
+
+local function drawSpeeds()
     local groundSpeed = mavsdk.getVfrGroundSpeed()
     local airSpeed = mavsdk.getVfrAirSpeed()
     local y = 115
+    if mavsdk.isGps2Available() then y = y + 32 end  
 
     lcd.setColor(CUSTOM_COLOR, p.WHITE) 
     local gs = string.format("GS %.1f m/s", groundSpeed)
@@ -965,7 +1043,7 @@ function draw:speeds()
 end
 
 
-function draw:batteryStatus()
+local function drawBatteryStatus()
     local voltage = mavsdk.getBatVoltage()
     local current = mavsdk.getBatCurrent()
     local remaining = mavsdk.getBatRemaining()
@@ -973,76 +1051,80 @@ function draw:batteryStatus()
     local y = 30
     -- voltage
     lcd.setColor(CUSTOM_COLOR, p.WHITE) 
-    lcd.drawNumber(self.xsize-18, y, voltage*100, CUSTOM_COLOR+DBLSIZE+RIGHT+PREC2)
-    lcd.drawText(self.xsize-2, y +14, "V", CUSTOM_COLOR+RIGHT)
+    lcd.drawNumber(draw.xsize-18, y, voltage*100, CUSTOM_COLOR+DBLSIZE+RIGHT+PREC2)
+    lcd.drawText(draw.xsize-2, y +14, "V", CUSTOM_COLOR+RIGHT)
     -- current
-    if current >= 0 then
+    if current ~= nil then
         lcd.setColor(CUSTOM_COLOR, p.WHITE) 
-        lcd.drawNumber(self.xsize-18, y+35, current*10, CUSTOM_COLOR+DBLSIZE+RIGHT+PREC1)
-        lcd.drawText(self.xsize-2, y+35 +14, "A", CUSTOM_COLOR+RIGHT)
+        lcd.drawNumber(draw.xsize-18, y+35, current*10, CUSTOM_COLOR+DBLSIZE+RIGHT+PREC1)
+        lcd.drawText(draw.xsize-2, y+35 +14, "A", CUSTOM_COLOR+RIGHT)
     end
     -- remaining
-    if remaining >= 0 then
+    if remaining ~= nil then
         lcd.setColor(CUSTOM_COLOR, p.WHITE) 
-        lcd.drawNumber(self.xsize-18, y+70, remaining, CUSTOM_COLOR+DBLSIZE+RIGHT)
-        lcd.drawText(self.xsize-2, y+70 +14, "%", CUSTOM_COLOR+RIGHT)
+        lcd.drawNumber(draw.xsize-18, y+70, remaining, CUSTOM_COLOR+DBLSIZE+RIGHT)
+        lcd.drawText(draw.xsize-2, y+70 +14, "%", CUSTOM_COLOR+RIGHT)
     end
     -- charge
-    if charge >= 0 then
+    if charge ~= nil then
         lcd.setColor(CUSTOM_COLOR, p.WHITE) 
-        lcd.drawNumber(self.xsize-40, y+105 +7, charge, CUSTOM_COLOR+MIDSIZE+RIGHT)
-        lcd.drawText(self.xsize-1, y+105 +14, "mAh", CUSTOM_COLOR+RIGHT)
+        lcd.drawNumber(draw.xsize-40, y+105 +7, charge, CUSTOM_COLOR+MIDSIZE+RIGHT)
+        lcd.drawText(draw.xsize-1, y+105 +14, "mAh", CUSTOM_COLOR+RIGHT)
     end
 end
 
 
-function draw:statusBar2()
-    local y = self.statusBar2Y
+local function drawStatusBar2()
+    local y = draw.statusBar2Y
     -- arming state
     if mavsdk.isArmed() then
         lcd.setColor(CUSTOM_COLOR, p.GREEN)
-        lcd.drawText(self.xmid, y-26, "ARMED", CUSTOM_COLOR+MIDSIZE+CENTER)
+        lcd.drawText(draw.xmid, y-26, "ARMED", CUSTOM_COLOR+MIDSIZE+CENTER)
     else    
         lcd.setColor(CUSTOM_COLOR, p.YELLOW)
-        lcd.drawText(self.xmid, y-26, "DISARMED", CUSTOM_COLOR+MIDSIZE+CENTER)
+        lcd.drawText(draw.xmid, y-26, "DISARMED", CUSTOM_COLOR+MIDSIZE+CENTER)
     end    
     
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
-    lcd.drawFilledRectangle(0, y, 480, self.ysize-y, CUSTOM_COLOR)
+    lcd.drawFilledRectangle(0, y, 480, draw.ysize-y, CUSTOM_COLOR)
     -- Flight mode
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     local flightModeStr = getFlightModeStr()
     if flightModeStr ~= nil then
         lcd.drawText(1, y-2, flightModeStr, CUSTOM_COLOR+DBLSIZE+LEFT)
     end
-    -- GPS
-    if mavsdk.getGpsFix() >= mavlink.GPS_FIX_TYPE_3D_FIX then
+    -- Position Fix
+    local haveposfix = true
+    -- expecting 7 Sats would be quite ok in my area
+    if mavsdk.getGpsFix() < mavlink.GPS_FIX_TYPE_3D_FIX then haveposfix = false end
+    if mavsdk.getGpsSat() < 7 then haveposfix = false end
+--    if mavsdk.getGpsHDop() > 1.5 then haveposfix = false end
+    if mavsdk.isGps2Available() then 
+        if mavsdk.getGps2Fix() < mavlink.GPS_FIX_TYPE_3D_FIX then haveposfix = false end
+        if mavsdk.getGps2Sat() < 7 then haveposfix = false end
+--        if mavsdk.getGps2HDop() > 1.5 then haveposfix = false end
+    end  
+    if not mavsdk.apPositionOk() then haveposfix = false end
+    if haveposfix then
         lcd.setColor(CUSTOM_COLOR, p.GREEN)
-        lcd.drawText(self.xmid, y-2, "GPS FIX", CUSTOM_COLOR+DBLSIZE+CENTER)
-    elseif mavsdk.getGpsFix() == mavlink.GPS_FIX_TYPE_NO_GPS then
-        lcd.setColor(CUSTOM_COLOR, p.RED)
-        lcd.drawText(self.xmid, y-2, "No GPS", CUSTOM_COLOR+DBLSIZE+CENTER)
+        lcd.drawText(draw.xmid, y-2, "POS FIX", CUSTOM_COLOR+DBLSIZE+CENTER)
     else
         lcd.setColor(CUSTOM_COLOR, p.RED)
-        lcd.drawText(self.xmid, y-2, "No FIX", CUSTOM_COLOR+DBLSIZE+CENTER)
+        lcd.drawText(draw.xmid, y-2, "No FIX", CUSTOM_COLOR+DBLSIZE+CENTER)
     end  
     -- Flight time
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     local timeStr = timeToStr(status_g.flight_time_10ms/100)
-    lcd.drawText(self.xsize-3, y-2, timeStr, CUSTOM_COLOR+DBLSIZE+RIGHT)
+    lcd.drawText(draw.xsize-3, y-2, timeStr, CUSTOM_COLOR+DBLSIZE+RIGHT)
 end      
 
-function draw:statusText()
---        printStatustextLast(5, 230, SMLSIZE)
+local function drawStatusText()
     for i=1,3 do
         printStatustextAt(i, 3, 5, 230+(i-1)*13, SMLSIZE)
     end    
---        for i=1,#statustext do
---            printStatustext(i, 50, 100+(i-1)*13, SMLSIZE)
---        end    
 end
 
-function drawAllStatusTextMessages()
+local function drawAllStatusTextMessages()
     for i=1,#statustext do
         printStatustextAt(i, #statustext, 10, 30+(i-1)*19, 0)
     end    
@@ -1065,28 +1147,30 @@ local autopilot_showstatustext_tmo = 0
 
 local function doPageAutopilot()
     local tnow = getTime()
-    if event == EVT_TELEM_LONG or event == EVT_TELEM_REPT then autopilot_showstatustext_tmo = tnow end  
-    if tnow - autopilot_showstatustext_tmo < 50 then 
+    if event == EVT_TELEM_LONG or event == EVT_TELEM_REPT then 
+        autopilot_showstatustext_tmo = tnow 
+    end  
+    if (tnow - autopilot_showstatustext_tmo) < 50 then 
         drawAllStatusTextMessages()
         return
     end    
   
-    draw:hud()
-    draw:compassRibbon()
-    draw:groundSpeed()
-    draw:altitude()
-    draw:verticalSpeed()
-    draw:gpsStatus()
-    draw:speeds()
-    draw:batteryStatus()
-    draw:statusBar2()
-    draw:statusText()
+    drawHud()
+    drawCompassRibbon()
+    drawGroundSpeed()
+    drawAltitude()
+    drawVerticalSpeed()
+    drawGpsStatus()
+    drawSpeeds()
+    drawBatteryStatus()
+    drawStatusBar2()
+    drawStatusText()
 end  
 
 
 
 ----------------------------------------------------------------------
--- Page Camera (page 2) Draw Class
+-- Page Camera Draw Class
 ----------------------------------------------------------------------
 
 local function drawNoCamera()
@@ -1108,22 +1192,19 @@ local camera_photo_counter = 0
 local camera_menu = { active = false, idx = 0 }
 
 local function camera_menu_set()
-    if not mavsdk.cameraIsInitialized then return 0 end
+    if not mavsdk.cameraIsInitialized() then return end
     
     if camera_menu.idx == 1 then
         mavsdk.cameraSetPhotoMode()
         playPhotoMode()
-        return mavlink.CAMERA_MODE_IMAGE
     elseif camera_menu.idx == 0 then
         mavsdk.cameraSetVideoMode()
         playVideoMode()
-        return mavlink.CAMERA_MODE_VIDEO
     end
-    return 0 
 end
 
 local function cameraDoAlways(bkgrd)
-    if not mavsdk.cameraIsInitialized then return end
+    if not mavsdk.cameraIsInitialized() then return end
 
     camera_shoot_switch_triggered = false
     local shoot_switch = getValue(config_g.cameraShootSwitch)
@@ -1132,7 +1213,7 @@ local function cameraDoAlways(bkgrd)
         camera_shoot_switch_last = shoot_switch
     end    
     
-    if (page ~= 2 or bkgrd > 0) and camera_shoot_switch_triggered then
+    if (pages[page] ~= cPageIdCamera or bkgrd > 0) and camera_shoot_switch_triggered then
         local status = mavsdk.cameraGetStatus()
         if status.mode == mavlink.CAMERA_MODE_VIDEO then
             if status.video_on then 
@@ -1156,7 +1237,7 @@ local function doPageCamera()
     local cameraStr = string.format("%s %d", string.upper(getCameraIdStr(info.compid)), info.compid)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(1, 20, cameraStr, CUSTOM_COLOR)
-    if not status.initialized then
+    if not mavsdk.cameraIsInitialized() then
         lcd.setColor(CUSTOM_COLOR, p.RED)
         lcd.drawText(LCD_W/2, 120, "camera module is initializing...", CUSTOM_COLOR+MIDSIZE+CENTER)
         return
@@ -1175,22 +1256,18 @@ local function doPageCamera()
     if event == EVT_TELEM_LONG then
         camera_shoot = true
     end  
-    if not mavsdk.cameraIsInitialized then
+    if not mavsdk.cameraIsInitialized() then
         camera_shoot = false
     end    
-    
-    local video_on = status.video_on -- we take a copy so that the display below can be more responsive
     
     if camera_shoot then 
         camera_shoot = false
         if status.mode == mavlink.CAMERA_MODE_VIDEO then
             if status.video_on then 
                 mavsdk.cameraStopVideo(); playVideoOff()
-                video_on = false
             else 
                 mavsdk.cameraStartVideo(); playVideoOn()
                 camera_video_timer_start_10ms = getTime()
-                video_on = true
             end
         elseif status.mode == mavlink.CAMERA_MODE_IMAGE then
             mavsdk.cameraTakePhoto(); playTakePhoto()
@@ -1198,20 +1275,18 @@ local function doPageCamera()
         end
     end
     
-    local mode = status.mode -- we take a copy so that the display below can be more responsive
-    
     if info.has_video and info.has_photo then
     if event == EVT_ENTER_LONG then
         if not camera_menu.active then      
             camera_menu.active = true
-            if mode == mavlink.CAMERA_MODE_VIDEO then
+            if status.mode == mavlink.CAMERA_MODE_VIDEO then
                 camera_menu.idx = 0
-            elseif mode == mavlink.CAMERA_MODE_IMAGE then
+            elseif status.mode == mavlink.CAMERA_MODE_IMAGE then
                 camera_menu.idx = 1
             end    
         else
             camera_menu.active = false
-            mode = camera_menu_set()
+            camera_menu_set()
         end
     elseif event == EVT_SYS_FIRST then
         if camera_menu.active then event = 0 end
@@ -1240,8 +1315,8 @@ local function doPageCamera()
     
     local video_color = p.GREY
     local photo_color = p.GREY
-    if mode == mavlink.CAMERA_MODE_VIDEO then video_color = p.WHITE end
-    if mode == mavlink.CAMERA_MODE_IMAGE then photo_color = p.WHITE end
+    if status.mode == mavlink.CAMERA_MODE_VIDEO then video_color = p.WHITE end
+    if status.mode == mavlink.CAMERA_MODE_IMAGE then photo_color = p.WHITE end
     
     if camera_menu.active then
         if camera_menu.idx == 0 then
@@ -1318,13 +1393,13 @@ local function doPageCamera()
     y = 175-16
     x = 375
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
-    if mode == mavlink.CAMERA_MODE_VIDEO then 
-        if video_on then
+    if status.mode == mavlink.CAMERA_MODE_VIDEO then 
+        if status.video_on then
             camera_video_timer = (getTime() - camera_video_timer_start_10ms)/100
         end    
         local timeStr = timeToStr(camera_video_timer)
         lcd.drawText(x, y, timeStr, CUSTOM_COLOR+MIDSIZE+CENTER)
-    elseif mode == mavlink.CAMERA_MODE_IMAGE then 
+    elseif status.mode == mavlink.CAMERA_MODE_IMAGE then 
         local countStr = string.format("%04d", camera_photo_counter)
         lcd.drawText(x, y, countStr, CUSTOM_COLOR+MIDSIZE+CENTER)
     end
@@ -1332,7 +1407,7 @@ end
 
 
 ----------------------------------------------------------------------
--- Page Gimbal (page 3) Draw Class
+-- Page Gimbal Draw Class
 ----------------------------------------------------------------------
 
 local function drawNoGimbal()
@@ -1345,36 +1420,54 @@ end
 
 local gimbal_pitch_cntrl_deg = nil
 local gimbal_mode = 6 -- using this to mark as invalid makes it easier to display
+local gimbal_hascontrol = true -- used to disable domountcontrol, e.g. when in quickshots
+local gimbal_controlispossible = false -- indicates if gimbal control is currently possible
+local gimbal_controlisactive = false -- indicates if gimbal control is currently active
 
-local function gimbalSetMode(mode, sound)
+local function gimbalSetMode(mode, sound_flag)
     if mode == 1 then
         mavsdk.gimbalSetNeutralMode()
         gimbal_mode = 1
-        if sound then playNeutral() end
+        if sound_flag then playNeutral() end
     elseif mode == 2 then
         mavsdk.gimbalSetMavlinkTargetingMode()
         gimbal_mode = 2
-        if sound then playMavlinkTargeting() end
+        if sound_flag then playMavlinkTargeting() end
     elseif mode == 3 then
         mavsdk.gimbalSetRcTargetingMode()
         gimbal_mode = 3
-        if sound then playRcTargeting() end
+        if sound_flag then playRcTargeting() end
     elseif mode == 4 then
         mavsdk.gimbalSetGpsPointMode()
         gimbal_mode = 4
-        if sound then playGpsPointTargeting() end
+        if sound_flag then playGpsPointTargeting() end
     elseif mode == 5 then
         mavsdk.gimbalSetSysIdTargetingMode()
         gimbal_mode = 5
-        if sound then playSysIdTargeting() end
+        if sound_flag then playSysIdTargeting() end
     end
 end  
 
+-- this is a wrapper, to account for adjustForArduPilotBug
+-- calling gimbalSetPitchYawDeg() sets mode implicitely to MAVLink targeting
+local function gimbalSetPitchYawDeg(pitch, yaw)
+    if config_g.adjustForArduPilotBug then 
+        mavsdk.gimbalSetPitchYawDeg(pitch*100, yaw*100)
+    else    
+        mavsdk.gimbalSetPitchYawDeg(pitch, yaw)
+    end
+    gimbal_mode = 2
+end
+
+local function gimbalHasControl(flag)
+    gimbal_hascontrol = flag
+end    
+
 local gimbal_menu = {
-  active = false, idx = 6, min = 1, max = 5, initialized = false, default = 3, idx_onenter = 6,
-  option = { "Neutral", "MAVLink Targeting", "RC Targeting", "GPS Point", "SysId Targeting", 
-             "set mode" },
-  selector_width = 240, selector_height = 34,
+    active = false, idx = 6, min = 1, max = 5, initialized = false, default = 3, idx_onenter = 6,
+    option = { "Neutral", "MAVLink Targeting", "RC Targeting", "GPS Point", "SysId Targeting", 
+               "set mode" },
+    selector_width = 240, selector_height = 34,
 }
 
 local function gimbal_menu_set()
@@ -1391,25 +1484,32 @@ local function gimbalDoAlways()
         return
     end    
   
-    -- set gimbal into default MAVLink targeting mode at connection
+    -- set gimbal into default MAVLink targeting mode upon connection
     if status_g.gimbal_changed_to_receiving then
         gimbalSetMode(config_g.gimbalDefaultTargetingMode, false)
         gimbal_menu.idx = config_g.gimbalDefaultTargetingMode
         gimbal_menu.initialized = true;
     end  
     
-    -- control pitch
+    -- pitch control slider
     local pitch_cntrl = getValue(config_g.gimbalPitchSlider)
-    if gimbal_mode == 2 and pitch_cntrl ~= nil then
+    if pitch_cntrl ~= nil then 
         gimbal_pitch_cntrl_deg = -(pitch_cntrl+1008)/1008*45
         if gimbal_pitch_cntrl_deg > 0 then gimbal_pitch_cntrl_deg = 0 end
         if gimbal_pitch_cntrl_deg < -90 then gimbal_pitch_cntrl_deg = -90 end
-        if config_g.adjustForArduPilotBug then 
-            mavsdk.gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg*100, 0)
-        else    
-            mavsdk.gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
-        end
-        -- gimbalSetPitchYawDeg() sets mode implicitely to MAVLink targeting
+    end
+    
+    -- control, but only if "allowed"
+    gimbal_controlispossible = false
+    gimbal_controlisactive = false
+    -- skip if in auto or guided mode as do_mount_control may overwrite _fixed_yaw
+    local fm = mavsdk.getFlightMode()
+    if fm == apCopterFlightModeAuto or fm == apCopterFlightModeGuided then return end
+    if not gimbal_hascontrol then return end
+    gimbal_controlispossible = true
+    if gimbal_mode == 2 then
+        gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        gimbal_controlisactive = true
     end    
 end  
 
@@ -1423,6 +1523,7 @@ local function doPageGimbal()
     local x = 0;
     local y = 20;
     
+    if gimbal_controlispossible then 
     if event == EVT_ENTER_LONG then
         if not gimbal_menu.initialized then
             gimbal_menu.initialized = true
@@ -1453,22 +1554,21 @@ local function doPageGimbal()
             gimbal_menu.idx = gimbal_menu.idx + 1
             if gimbal_menu.idx > gimbal_menu.max then gimbal_menu.idx = gimbal_menu.max end
         end    
-    end    
+    end
+    end
     
     -- DISPLAY
-    local xmid = draw.xmid
-    
     local is_armed = mavsdk.gimbalGetStatus().is_armed
     local prearm_ok = mavsdk.gimbalGetStatus().prearm_ok
     if is_armed then 
         lcd.setColor(CUSTOM_COLOR, p.GREEN)
-        lcd.drawText(xmid, 20-4, "ARMED", CUSTOM_COLOR+DBLSIZE+CENTER)
+        lcd.drawText(draw.xmid, 20-4, "ARMED", CUSTOM_COLOR+DBLSIZE+CENTER)
     elseif prearm_ok then     
         lcd.setColor(CUSTOM_COLOR, p.YELLOW)
-        lcd.drawText(xmid, 20, "Prearm Checks Ok", CUSTOM_COLOR+MIDSIZE+CENTER)
+        lcd.drawText(draw.xmid, 20, "Prearm Checks Ok", CUSTOM_COLOR+MIDSIZE+CENTER)
     else  
         lcd.setColor(CUSTOM_COLOR, p.YELLOW)
-        lcd.drawText(xmid, 20, "Initializing", CUSTOM_COLOR+MIDSIZE+CENTER)
+        lcd.drawText(draw.xmid, 20, "Initializing", CUSTOM_COLOR+MIDSIZE+CENTER)
     end
     
     y = 85
@@ -1490,17 +1590,15 @@ local function doPageGimbal()
     lcd.setColor(CUSTOM_COLOR, p.YELLOW)
     drawCircleQuarter(x, y, r, 4)    
     
+    if gimbal_controlisactive then
+        lcd.setColor(CUSTOM_COLOR, p.WHITE)
+        local cangle = gimbal_pitch_cntrl_deg
+        drawCircle(x + (r-10)*math.cos(math.rad(cangle)), y - (r-10)*math.sin(math.rad(cangle)), 7)
+    else
+        lcd.setColor(CUSTOM_COLOR, p.GREY)
+    end 
     if gimbal_pitch_cntrl_deg ~= nil then
-        if gimbal_mode == 2 then 
-            lcd.setColor(CUSTOM_COLOR, p.WHITE)
-        else    
-            lcd.setColor(CUSTOM_COLOR, p.GREY)
-        end    
         lcd.drawNumber(400, 100, gimbal_pitch_cntrl_deg, CUSTOM_COLOR+XXLSIZE+CENTER)
-        if gimbal_mode == 2 then 
-            local cangle = gimbal_pitch_cntrl_deg
-            drawCircle(x + (r-10)*math.cos(math.rad(cangle)), y - (r-10)*math.sin(math.rad(cangle)), 7)
-        end    
     end    
     
     lcd.setColor(CUSTOM_COLOR, p.RED)
@@ -1514,13 +1612,17 @@ local function doPageGimbal()
         local w = gimbal_menu.selector_width
         local h = gimbal_menu.selector_height
         lcd.setColor(CUSTOM_COLOR, p.BLUE)
-        lcd.drawFilledRectangle(xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
+        lcd.drawFilledRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
         lcd.setColor(CUSTOM_COLOR, p.WHITE)
-        lcd.drawRectangle(xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
-        lcd.drawText(xmid, y, gimbal_menu.option[gimbal_menu.idx], CUSTOM_COLOR+MIDSIZE+CENTER)
-    else    
-        lcd.setColor(CUSTOM_COLOR, p.WHITE)
-        lcd.drawText(xmid, y, gimbal_menu.option[gimbal_mode], CUSTOM_COLOR+MIDSIZE+CENTER)
+        lcd.drawRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
+        lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_menu.idx], CUSTOM_COLOR+MIDSIZE+CENTER)
+    else
+        if gimbal_controlispossible then
+            lcd.setColor(CUSTOM_COLOR, p.WHITE)
+        else    
+            lcd.setColor(CUSTOM_COLOR, p.GREY)
+        end    
+        lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_mode], CUSTOM_COLOR+MIDSIZE+CENTER)
     end
 end  
 
@@ -1591,44 +1693,61 @@ end
 -- Page QuickShot Draw Class
 ----------------------------------------------------------------------
 local debug = false
-debug = true
+--debug = true
+
+local cablecam_maxSpeed = 1.5
+local cablecam_maxAcceleration = 1.0
 
 local pointA = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
 local pointB = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
-if debug then
-  pointA = { lat = 480674167, lon = 78769399, yaw = 0, alt = 3.2, pitch = 0 }
-  pointB = { lat = 480673693, lon = 78770177, yaw = 90, alt = 4.2, pitch = 0 }
-end
 
 local cablecam_max_speed = 2.0 -- m/s
-local cablecam_state = 0 -- not running
+local cablecam_state = 0 -- 0: not running
 local cablecam_length = 0 -- m
 local cablecam_flightmode_at_start = 0
 local cablecam_throttle_at_start = 0
 
-local function posDistance(lat1,lon1,lat2,lon2)
+local function posDistance1(lat1,lon1,lat2,lon2)
+    --haversine formula
     local R = 6371000
+    local theta1 = math.rad(lat1 * 1.0e-7)
+    local theta2 = math.rad(lat2 * 1.0e-7)
     local dTheta = math.rad((lat2-lat1) * 1.0e-7)
     local dPhi = math.rad((lon2-lon1) * 1.0e-7)
-    --haversine formula
-    --local theta1 = math.rad(lat1 * 1.0e-7)
-    --local theta2 = math.rad(lat2 * 1.0e-7)
-    --local a = math.sin(dTheta*0.5) * math.sin(dTheta*0.5)
-    --a = a + math.cos(theta1) * math.cos(theta2) * math.sin(dPhi*0.5) * math.sin(dPhi*0.5)
-    --local c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    local a = math.sin(dTheta*0.5) * math.sin(dTheta*0.5)
+    a = a + math.cos(theta1) * math.cos(theta2) * math.sin(dPhi*0.5) * math.sin(dPhi*0.5)
+    local c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
+    return R * c
+end  
+
+local function dpos_to_m(dposint)
+    -- flat earth math
+    -- y = rad[(lon-lon0) * 1e-7] * R = pi/180 * 1e-7 * 6.371e6 * (lon-lon0) 
+    return math.rad(0.6371) * dposint
+end    
+
+local function m_to_dpos(m)
+    -- flat earth math
+    -- lon-lon0 = 1e7 * deg(y/R) = 180/pi * 1e7 / 6.371e6 * y
+    return math.deg(1.0/0.6371) * m
+end    
+
+local function posDistance(lat1,lon1,lat2,lon2)
     -- flat earth
     local xScale = math.cos(math.rad((lat1+lat2) * 1.0e-7) * 0.5)
-    local x = dPhi * xScale
-    local c = math.sqrt(x*x + dTheta*dTheta) 
-    return R * c
+    local x = dpos_to_m(lon2 - lon1) * xScale
+    local y = dpos_to_m(lat2 - lat1)
+    return math.sqrt(x*x + y*y) 
 end  
 
 local function pointAOk()
     -- check if point A is valid
     if pointA.lat == nil then return false end
     if pointA.lon == nil then return false end
-    if pointA.yaw == nil then return false end
     if pointA.alt == nil then return false end
+    if pointA.yaw == nil then return false end
+    if pointA.lat == 0 then return false end
+    if pointA.lon == 0 then return false end
 --    if pointA.alt < 1 then return false end
 --    if pointA.alt > 4 then return false end
     return true
@@ -1638,8 +1757,10 @@ local function pointBOk()
     -- check if point B is valid
     if pointB.lat == nil then return false end
     if pointB.lon == nil then return false end
-    if pointB.yaw == nil then return false end
     if pointB.alt == nil then return false end
+    if pointB.yaw == nil then return false end
+    if pointB.lat == 0 then return false end
+    if pointB.lon == 0 then return false end
 --    if pointB.alt < 1 then return false end
 --    if pointB.alt > 4 then return false end
     return true
@@ -1648,10 +1769,11 @@ end
 local function pointsOk()
     if not pointAOk() then return false end
     if not pointBOk() then return false end
-    cablecam_length = posDistance(pointB.lat,pointB.lon,pointA.lat,pointA.lon)
-    if cablecam_length < 1.0 then return false end
+    local length = posDistance(pointB.lat,pointB.lon,pointA.lat,pointA.lon)
+    if length < 0.5 then return false end
     return true
 end
+
 
 local function doPageQuickshotNotRunning()
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
@@ -1664,52 +1786,70 @@ local function doPageQuickshotNotRunning()
     if pointAOk() then 
         lcd.drawNumber(40, 45-1, pointA.lat, CUSTOM_COLOR+LEFT)
         lcd.drawNumber(40, 45+20, pointA.lon, CUSTOM_COLOR+LEFT)
-        lcd.drawNumber(40, 45+41, pointA.alt, CUSTOM_COLOR+LEFT+PREC1)
+        lcd.drawNumber(40, 45+41, pointA.alt*10, CUSTOM_COLOR+LEFT+PREC1)
     else  
         lcd.drawText(40, 45+4, "---", CUSTOM_COLOR+LEFT+MIDSIZE)
     end  
     if pointBOk() then 
         lcd.drawNumber(40, 190-1, pointB.lat, CUSTOM_COLOR+LEFT)
         lcd.drawNumber(40, 190+20, pointB.lon, CUSTOM_COLOR+LEFT)
-        lcd.drawNumber(40, 190+41, pointB.alt, CUSTOM_COLOR+LEFT+PREC1)
+        lcd.drawNumber(40, 190+41, pointB.alt*10, CUSTOM_COLOR+LEFT+PREC1)
     else  
         lcd.drawText(40, 190+4, "---", CUSTOM_COLOR+LEFT+MIDSIZE)
+    end  
+    
+    if pointsOk() then
+        local length = posDistance(pointB.lat,pointB.lon,pointA.lat,pointA.lon)
+        lcd.drawNumber(draw.xmid, 220, length*100, CUSTOM_COLOR+LEFT+PREC2)
     end  
     
     if event == EVT_MODEL_LONG then
         -- set point A
         pointA.lat = mavsdk.getPositionLatLonInt().lat
         pointA.lon = mavsdk.getPositionLatLonInt().lon
-        pointA.yaw = mavsdk.getPositionHeadingDeg() --mavsdk.getAttYawDeg()
         pointA.alt = mavsdk.getPositionAltitudeRelative()
+        pointA.yaw = mavsdk.getPositionHeadingDeg() --mavsdk.getAttYawDeg()
         pointA.pitch = 0
+if debug then
+  pointA = { lat = 480674167, lon = 78769399, yaw = 0, alt = 3.2, pitch = 0 }
+end    
         playHaptic(10,0)
     elseif event == EVT_TELEM_LONG then
         -- set point B
         pointB.lat = mavsdk.getPositionLatLonInt().lat
         pointB.lon = mavsdk.getPositionLatLonInt().lon
-        pointB.yaw = mavsdk.getPositionHeadingDeg()
         pointB.alt = mavsdk.getPositionAltitudeRelative()
+        pointB.yaw = mavsdk.getPositionHeadingDeg()
         pointB.pitch = 0
+if debug then
+  pointB = { lat = 480673693, lon = 78770177, yaw = 90, alt = 4.2, pitch = 0 }
+end
         playHaptic(10,0)
     elseif event == EVT_ENTER_LONG then
-        if pointsOk() then 
+        if pointsOk() then --and
+--           (mavsdk.getFlightMode() == apCopterFlightModeAltHold or
+--           mavsdk.getFlightMode() == apCopterFlightModePosHold or
+--           mavsdk.getFlightMode() == apCopterFlightModeLoiter) then
             cablecam_flightmode_at_start = mavsdk.getFlightMode()
             cablecam_throttle_at_start = getValue("thr")
             mavsdk.apSetFlightMode(apCopterFlightModeGuided) -- 4 = Guided
             cablecam_state = 1 -- start
             playHaptic(10,5);playHaptic(10,0)
-        end
+        else
+            playHaptic(5,5);playHaptic(5,5);playHaptic(10,0)
+        end    
     end        
 end
 
 
-local cablecam_is_at = 0
+local cablecam_target = 0
+local cablecam_speed = 0
 local cablecam_tlast = 0
-local cablecam_goto_tlast = 0
 local cablecam_lat0 = 0
 local cablecam_lon0 = 0
 local cablecam_xScale = 0
+local cablecam_tstart = 0
+local cablecam_run = false
 
 
 local function doPageQuickshotRunning()
@@ -1724,127 +1864,178 @@ local function doPageQuickshotRunning()
     lcd.drawNumber(40, 190-1, pointB.lat, CUSTOM_COLOR+LEFT)
     lcd.drawNumber(40, 190+20, pointB.lon, CUSTOM_COLOR+LEFT)
     
-    lcd.drawNumber(draw.xmid, 230, cablecam_length*100, CUSTOM_COLOR+CENTER+PREC2)
-    
+    -- set display area
     local pA_x = draw.xmid-100
     local pA_y = 80
     local pB_x = draw.xmid+100
     local pB_y = 200
     
+    -- draw cable
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(pA_x, pA_y-11, "x", CUSTOM_COLOR+CENTER)
     lcd.drawText(pB_x, pB_y-11, "x", CUSTOM_COLOR+CENTER)
     lcd.drawLine(pA_x, pA_y, pB_x, pB_y, SOLID, CUSTOM_COLOR)
     
+    -- get current vehicle position
+    local cur_lat = mavsdk.getPositionLatLonInt().lat
+    local cur_lon = mavsdk.getPositionLatLonInt().lon
+    local cur_alt = mavsdk.getPositionAltitudeRelative()
+    local cur_yaw = mavsdk.getPositionHeadingDeg()
+if debug then
+  cur_lat = 480674000; cur_lon = 78770000; --cur_yaw = 72
+end  
+    --lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    --lcd.drawNumber(40, 100, cur_lat, CUSTOM_COLOR+LEFT)
+    --lcd.drawNumber(40, 100+20, cur_lon, CUSTOM_COLOR+LEFT)
+    --lcd.drawNumber(40, 100+40, cur_alt*100, CUSTOM_COLOR+LEFT+PREC2)
+    --lcd.drawNumber(40, 100+60, cur_yaw*10, CUSTOM_COLOR+LEFT+PREC1)
+    
+    -- read cable stick
     local v = getValue("ail")/1024
-    if v > -0.01 and v < 0.01 then v = 0 end
-    local speed = (cablecam_max_speed/cablecam_length) * v
+    if v > -0.01 and v < 0.01 then v = 0 else cablecam_state = 3 end
+    local desiredSpeed = cablecam_maxSpeed * v
     
     local tnow = getTime()
     
-    local cur_lat = mavsdk.getPositionLatLonInt().lat
-    local cur_lon = mavsdk.getPositionLatLonInt().lon
-    local cur_yaw = mavsdk.getPositionHeadingDeg()
-    if debug then
-        cur_lat = 480674000; cur_lon = 78770000; --cur_yaw = 72
-    end  
-    
+    -- initialize, for approach to cable
     if cablecam_state <= 1 then
         cablecam_state = 2
-        cablecam_tlast = tnow
         
+        -- get the center position of the area
         cablecam_lat0 = (pointA.lat + pointB.lat) * 0.5
         cablecam_lon0 = (pointA.lon + pointB.lon) * 0.5
         cablecam_xScale = math.cos(math.rad( cablecam_lat0 * 1.0e-7 ))
         
         -- find closest path to cable
-        local xA = math.rad((pointA.lon - cablecam_lon0) * 1.0e-7) * cablecam_xScale
-        local yA = math.rad((pointA.lat - cablecam_lat0) * 1.0e-7)
-        local x3 = math.rad((cur_lon - cablecam_lon0) * 1.0e-7) * cablecam_xScale
-        local y3 = math.rad((cur_lat - cablecam_lat0) * 1.0e-7)
-                 
-        cablecam_is_at = ( (xA-x3)*(xA+xA) + (yA-y3)*(yA+yA) )/( (xA+xA)*(xA+xA) + (yA+yA)*(yA+yA) )
-        cablecam_goto_tlast = tnow - 20        
+--[[        
+        local xA = (pointA.lon - cablecam_lon0) * cablecam_xScale
+        local yA = (pointA.lat - cablecam_lat0)
+        local x3 = (cur_lon - cablecam_lon0) * cablecam_xScale
+        local y3 = (cur_lat - cablecam_lat0)
+        cablecam_target = ( (xA-x3)*(xA+xA) + (yA-y3)*(yA+yA) )/( (xA+xA)*(xA+xA) + (yA+yA)*(yA+yA) )
+]]        
+        local distToA = posDistance(pointA.lat, pointA.lon, cur_lat, cur_lon)
+        local distToB = posDistance(pointB.lat, pointB.lon, cur_lat, cur_lon)
+        if distToA > distToB then 
+            cablecam_target = 1
+        else
+            cablecam_target = 0
+        end  
         
---[[        cablecam_is_at = 0.5
-        local cntrl = cablecam_is_at
-        local pCntrl_lat = (pointB.lat - pointA.lat) * cntrl + pointA.lat
-        local pCntrl_lon = (pointB.lon - pointA.lon) * cntrl + pointA.lon
-        local pCntrl_alt = (pointB.alt - pointA.alt) * cntrl + pointA.alt
-        local pCntrl_yaw = (pointB.yaw - pointA.yaw) * cntrl + pointA.yaw
-        
-        mavsdk.apGotoPositionAltYaw(pCntrl_lat, pCntrl_lon, pCntrl_alt, pCntrl_yaw)
-        cablecam_goto_tlast = tnow ]]
+        cablecam_speed = cablecam_maxSpeed
+
+        cablecam_tlast = 0
+        cablecam_tstart = tnow
+        cablecam_run = false
     end  
+    
+    -- wait for guided mode, if we don't have it after 1 sec, jump out
+    local getoutofhere = false
+    if tnow - cablecam_tstart > 100 then
+        if mavsdk.getFlightMode() ~= apCopterFlightModeGuided then getoutofhere = true end
+    else
+        if mavsdk.getFlightMode() == apCopterFlightModeGuided then cablecam_run = true end
+    end 
    
-    -- move on cable
-    cablecam_is_at = cablecam_is_at + speed * 0.01*(tnow-cablecam_tlast)
-    if cablecam_is_at > 1 then cablecam_is_at = 1 end
-    if cablecam_is_at < 0 then cablecam_is_at = 0 end
-    cablecam_tlast = tnow
+    local doUpdate = false
+    if cablecam_run and tnow - cablecam_tlast > 10 then --only every 100 ms
+        doUpdate = true
+   
+        -- move on cable
+        local dt = 0.01*(tnow - cablecam_tlast)
+        
+        --approach desired speed
+        if desiredSpeed > cablecam_speed then
+            cablecam_speed = cablecam_speed + cablecam_maxAcceleration * dt
+            if cablecam_speed > desiredSpeed then cablecam_speed = desiredSpeed end
+        elseif desiredSpeed < cablecam_speed then
+            cablecam_speed = cablecam_speed - cablecam_maxAcceleration * dt
+            if cablecam_speed < desiredSpeed then cablecam_speed = desiredSpeed end
+        else    
+            cablecam_speed = desiredSpeed
+        end
+        
+        --chose target
+        if cablecam_speed > 0.0 then 
+            cablecam_target = 1 
+        elseif cablecam_speed < 0.0 then  
+            cablecam_target = 0 
+        end
+        
+        cablecam_tlast = tnow
+    end    
     
-    local pCntrl_lat = (pointB.lat - pointA.lat) * cablecam_is_at + pointA.lat
-    local pCntrl_lon = (pointB.lon - pointA.lon) * cablecam_is_at + pointA.lon
-    local pCntrl_alt = (pointB.alt - pointA.alt) * cablecam_is_at + pointA.alt
-    local pCntrl_yaw = (pointB.yaw - pointA.yaw) * cablecam_is_at + pointA.yaw
+    local pCntrl_lat = (pointB.lat - pointA.lat) * cablecam_target + pointA.lat
+    local pCntrl_lon = (pointB.lon - pointA.lon) * cablecam_target + pointA.lon
+    local pCntrl_alt = pointA.alt
+    local pCntrl_yaw = pointA.yaw
     
+    local pCntrl_speed = cablecam_speed
+   
+    -- draw simulated cable cam position
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawNumber(40, 100, pCntrl_lat, CUSTOM_COLOR+LEFT)
     lcd.drawNumber(40, 100+20, pCntrl_lon, CUSTOM_COLOR+LEFT)
     lcd.drawNumber(40, 100+40, pCntrl_alt*100, CUSTOM_COLOR+LEFT+PREC2)
     lcd.drawNumber(40, 100+60, pCntrl_yaw*10, CUSTOM_COLOR+LEFT+PREC1)
     
-    -- draw cable cam position
-    local pCntrl_x = (pB_x - pA_x) * cablecam_is_at + pA_x
-    local pCntrl_y = (pB_y - pA_y) * cablecam_is_at + pA_y
+    lcd.drawNumber(draw.xmid, 220, pCntrl_speed*100, CUSTOM_COLOR+CENTER+PREC2)
+    
+    local pCntrl_x = (pB_x - pA_x) * cablecam_target + pA_x
+    local pCntrl_y = (pB_y - pA_y) * cablecam_target + pA_y
     
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     drawCircle(pCntrl_x, pCntrl_y, 8)
     lcd.drawText(pCntrl_x, pCntrl_y-11, "x", CUSTOM_COLOR+CENTER)
     lcd.setColor(CUSTOM_COLOR, p.YELLOW)
     lcd.drawLine(pCntrl_x, pCntrl_y,
-                 pCntrl_x + 16*math.sin(math.rad(pCntrl_yaw)), pCntrl_y - 16*math.cos(math.rad(pCntrl_yaw)),
-                 SOLID, CUSTOM_COLOR)
-    
+            pCntrl_x + 16*math.sin(math.rad(pCntrl_yaw)), pCntrl_y - 16*math.cos(math.rad(pCntrl_yaw)),
+            SOLID, CUSTOM_COLOR)
+          
     -- draw current vehicle positon
-    -- comment: math could be much simplified
-    local xA = math.rad((pointA.lon - cablecam_lon0) * 1.0e-7) * cablecam_xScale
-    local yA = math.rad((pointA.lat - cablecam_lat0) * 1.0e-7)
+    local xA = (pointA.lon - cablecam_lon0) * cablecam_xScale
+    local yA = pointA.lat - cablecam_lat0
+    local xV = (cur_lon - cablecam_lon0) * cablecam_xScale
+    local yV = cur_lat - cablecam_lat0
     
-    local xV = math.rad((cur_lon - cablecam_lon0) * 1.0e-7) * cablecam_xScale
-    local yV = math.rad((cur_lat - cablecam_lat0) * 1.0e-7)
     local pV_x = (pB_x - pA_x) * (xA - xV)/(xA + xA) + pA_x 
     local pV_y = (pB_y - pA_y) * (yA - yV)/(yA + yA) + pA_y 
     if pV_x < draw.xmid-200 then pV_x = draw.xmid-200 end
     if pV_x > draw.xmid+200 then pV_x = draw.xmid+200 end
     if pV_y < draw.ymid-100 then pV_y = draw.ymid-100 end
     if pV_y > draw.ymid+100 then pV_y = draw.ymid+100 end
+    
     lcd.setColor(CUSTOM_COLOR, p.DARKRED)
     fillCircle(pV_x, pV_y, 5)
+    lcd.setColor(CUSTOM_COLOR, p.RED)
     lcd.drawLine(pV_x, pV_y,
                  pV_x + 16*math.sin(math.rad(cur_yaw)), pV_y - 16*math.cos(math.rad(cur_yaw)),
                  SOLID, CUSTOM_COLOR)
-    
+          
     -- move vehicle to cable position
-    if tnow - cablecam_goto_tlast > 10 then --only every 100 ms
-        mavsdk.apGotoPositionAltYaw(pCntrl_lat, pCntrl_lon, pCntrl_alt, pCntrl_yaw)
-        cablecam_goto_tlast = getTime()
+    if doUpdate then
+        --mavsdk.apGotoPosIntAltRelYawDeg(pCntrl_lat, pCntrl_lon, pCntrl_alt, pCntrl_yaw)
+        --mavsdk.apGotoPosIntAltRel(pCntrl_lat, pCntrl_lon, pCntrl_alt)
+        mavsdk.apSimpleGotoPosIntAltRel(pCntrl_lat, pCntrl_lon, pCntrl_alt)
+        mavsdk.apSetGroundSpeed(pCntrl_speed)
     end    
     
-    if event == EVT_ENTER_LONG then
-        local throttle = getValue("thr")
-        if throttle < -125 or throttle > 125 then
-            playThrottleWarning()
-        else  
+    if event == EVT_ENTER_LONG or getoutofhere then
+--        local throttle = getValue("thr")
+--        if throttle < -125 or throttle > 125 then
+--            playThrottleWarning()
+--        else  
             cablecam_state = 0 -- stop
-            if cablecam_flightmode_at_start ~= apCopterFlightModeAltHold and 
-               cablecam_flightmode_at_start ~= apCopterFlightModeLoiter and
-               cablecam_flightmode_at_start ~= apCopterFlightModePosHold then
-                cablecam_flightmode_at_start = apCopterFlightModeLoiter
-            end    
             playHaptic(10,5);playHaptic(10,0)
-            mavsdk.apSetFlightMode(cablecam_flightmode_at_start)
-        end    
+            if cablecam_flightmode_at_start ~= apCopterFlightModeAltHold and
+               cablecam_flightmode_at_start ~= apCopterFlightModePosHold and
+               cablecam_flightmode_at_start ~= apCopterFlightModeLoiter then 
+                cablecam_flightmode_at_start = apCopterFlightModeAltHold
+            end    
+            if not getoutofhere then
+                mavsdk.apSetFlightMode(cablecam_flightmode_at_start)
+            end  
+--        end    
     end        
 end
 
@@ -1854,9 +2045,7 @@ local function doPageQuickshot()
     lcd.setColor(CUSTOM_COLOR, p.RED)
     lcd.drawText(draw.xmid, 20-4, "Cable Cam", CUSTOM_COLOR+DBLSIZE+CENTER)
     if not mavsdk.isReceiving() then return end
-    --lcd.drawText(5, 45, "GUIDED", CUSTOM_COLOR+LEFT+DBLSIZE)
-    --lcd.drawText(5, 190, "DISARM", CUSTOM_COLOR+LEFT+DBLSIZE)
-    --lcd.drawText(draw.xsize-5, 190, "TAKE OFF", CUSTOM_COLOR+RIGHT+DBLSIZE)
+    
     -- Flight mode
     lcd.setColor(CUSTOM_COLOR, p.YELLOW)
     local flightModeStr = getFlightModeStr()
@@ -1867,10 +2056,14 @@ local function doPageQuickshot()
     -- cablecam
     if cablecam_state <= 0 then
         doPageQuickshotNotRunning()
-    else    
+    else
         doPageQuickshotRunning()
     end
     
+    if debug then
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+        lcd.drawText(draw.xmid, 238, "!! DEBUG !!", CUSTOM_COLOR+DBLSIZE+CENTER)
+    end  
 end  
 
 
@@ -1962,6 +2155,7 @@ local function widgetRefresh(widget)
         doPageInMenu()
         return
     end
+    lcd.backlightOn()
     
     -- EVT_ENTER_xxx, EVT_TELEM_xx, EVT_MODEL_xxx, EVT_SYS_xxx, EVT_RTN_xxx
     -- EVT_VIRTUAL_DEC, EVT_VIRTUAL_INC
@@ -1972,6 +2166,8 @@ local function widgetRefresh(widget)
         event = 0
     end    
     
+    gimbalHasControl(pages[page] ~= cPageIdQuickshot) -- don't give it control during quickshots
+    
     doAlways(0)
     
     if pages[page] == cPageIdAutopilot then
@@ -1980,9 +2176,7 @@ local function widgetRefresh(widget)
         lcd.setColor(CUSTOM_COLOR, p.CAMERA_BACKGROUND)
     elseif pages[page] == cPageIdGimbal then   
         lcd.setColor(CUSTOM_COLOR, p.GIMBAL_BACKGROUND)
-    elseif pages[page] == cPageIdPrearm then
-        lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
-    elseif pages[page] == cPageIdQuickshot then
+    else    
         lcd.setColor(CUSTOM_COLOR, p.BACKGROUND)
     end  
     lcd.clear(CUSTOM_COLOR)
@@ -2018,6 +2212,11 @@ local function widgetRefresh(widget)
         lcd.setColor(CUSTOM_COLOR, p.GREY)
         lcd.drawText(LCD_W/2, 256, "OlliW Telemetry Script  "..versionStr, CUSTOM_COLOR+SMLSIZE+CENTER)
     end    
+    
+--    if mavsdk.getBatCapacity() ~= nil then
+--        lcd.setColor(CUSTOM_COLOR, p.WHITE)
+--        lcd.drawNumber(LCD_W/2, 100, mavsdk.getBatCapacity(), CUSTOM_COLOR+DBLSIZE+CENTER)
+--    end  
 end
 
 
