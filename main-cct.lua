@@ -3,7 +3,7 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.0.8, 2020-03-08
+-- Version: 0.0.5, 2020-02-26
 --
 -- Documentation:
 --
@@ -62,7 +62,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.0.8 2020-03-08"
+local versionStr = "0.0.7rc 2020-02-28"
 
 
 ----------------------------------------------------------------------
@@ -153,6 +153,7 @@ local pageAutopilotEnabled = true
 local pageCameraEnabled = config_g.showCameraPage
 local pageGimbalEnabled = config_g.showGimbalPage
 local pagePrearmEnabled = config_g.showPrearmPage
+local pageQuickshotEnabled = true
 
 
 local event = 0
@@ -164,9 +165,11 @@ local cPageIdAutopilot = 1
 local cPageIdCamera = 2
 local cPageIdGimbal = 3
 local cPageIdPrearm = 4
+local cPageIdQuickshot = 5
 
 local pages = {}
 --if pagePrearmEnabled then page_max = page_max+1; pages[page_max] = cPageIdPrearm end
+if pageQuickshotEnabled then page_max = page_max+1; pages[page_max] = cPageIdQuickshot; end
 if pageAutopilotEnabled then page_max = page_max+1; pages[page_max] = cPageIdAutopilot; page = page_max end
 if pageCameraEnabled then page_max = page_max+1; pages[page_max] = cPageIdCamera end
 if pageGimbalEnabled then page_max = page_max+1; pages[page_max] = cPageIdGimbal end
@@ -1685,6 +1688,386 @@ local function doPagePrearm()
 end  
 
 
+
+----------------------------------------------------------------------
+-- Page QuickShot Draw Class
+----------------------------------------------------------------------
+local debug = false
+--debug = true
+
+local cablecam_maxSpeed = 1.5
+local cablecam_maxAcceleration = 1.0
+
+local pointA = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
+local pointB = { lat = nil, lon = nil, yaw = nil, alt = nil, pitch = nil }
+
+local cablecam_max_speed = 2.0 -- m/s
+local cablecam_state = 0 -- 0: not running
+local cablecam_length = 0 -- m
+local cablecam_flightmode_at_start = 0
+local cablecam_throttle_at_start = 0
+
+local function posDistance1(lat1,lon1,lat2,lon2)
+    --haversine formula
+    local R = 6371000
+    local theta1 = math.rad(lat1 * 1.0e-7)
+    local theta2 = math.rad(lat2 * 1.0e-7)
+    local dTheta = math.rad((lat2-lat1) * 1.0e-7)
+    local dPhi = math.rad((lon2-lon1) * 1.0e-7)
+    local a = math.sin(dTheta*0.5) * math.sin(dTheta*0.5)
+    a = a + math.cos(theta1) * math.cos(theta2) * math.sin(dPhi*0.5) * math.sin(dPhi*0.5)
+    local c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
+    return R * c
+end  
+
+local function dpos_to_m(dposint)
+    -- flat earth math
+    -- y = rad[(lon-lon0) * 1e-7] * R = pi/180 * 1e-7 * 6.371e6 * (lon-lon0) 
+    return math.rad(0.6371) * dposint
+end    
+
+local function m_to_dpos(m)
+    -- flat earth math
+    -- lon-lon0 = 1e7 * deg(y/R) = 180/pi * 1e7 / 6.371e6 * y
+    return math.deg(1.0/0.6371) * m
+end    
+
+local function posDistance(lat1,lon1,lat2,lon2)
+    -- flat earth
+    local xScale = math.cos(math.rad((lat1+lat2) * 1.0e-7) * 0.5)
+    local x = dpos_to_m(lon2 - lon1) * xScale
+    local y = dpos_to_m(lat2 - lat1)
+    return math.sqrt(x*x + y*y) 
+end  
+
+local function pointAOk()
+    -- check if point A is valid
+    if pointA.lat == nil then return false end
+    if pointA.lon == nil then return false end
+    if pointA.alt == nil then return false end
+    if pointA.yaw == nil then return false end
+    if pointA.lat == 0 then return false end
+    if pointA.lon == 0 then return false end
+--    if pointA.alt < 1 then return false end
+--    if pointA.alt > 4 then return false end
+    return true
+end
+
+local function pointBOk()
+    -- check if point B is valid
+    if pointB.lat == nil then return false end
+    if pointB.lon == nil then return false end
+    if pointB.alt == nil then return false end
+    if pointB.yaw == nil then return false end
+    if pointB.lat == 0 then return false end
+    if pointB.lon == 0 then return false end
+--    if pointB.alt < 1 then return false end
+--    if pointB.alt > 4 then return false end
+    return true
+end
+
+local function pointsOk()
+    if not pointAOk() then return false end
+    if not pointBOk() then return false end
+    local length = posDistance(pointB.lat,pointB.lon,pointA.lat,pointA.lon)
+    if length < 0.5 then return false end
+    return true
+end
+
+
+local function doPageQuickshotNotRunning()
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(5, 45, "A", CUSTOM_COLOR+LEFT+DBLSIZE)
+    lcd.drawText(5, 190, "B", CUSTOM_COLOR+LEFT+DBLSIZE)
+    if not pointsOk() then lcd.setColor(CUSTOM_COLOR, p.GREY) end
+    lcd.drawText(draw.xsize-5, 190, "START", CUSTOM_COLOR+RIGHT+DBLSIZE)
+    
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if pointAOk() then 
+        lcd.drawNumber(40, 45-1, pointA.lat, CUSTOM_COLOR+LEFT)
+        lcd.drawNumber(40, 45+20, pointA.lon, CUSTOM_COLOR+LEFT)
+        lcd.drawNumber(40, 45+41, pointA.alt*10, CUSTOM_COLOR+LEFT+PREC1)
+    else  
+        lcd.drawText(40, 45+4, "---", CUSTOM_COLOR+LEFT+MIDSIZE)
+    end  
+    if pointBOk() then 
+        lcd.drawNumber(40, 190-1, pointB.lat, CUSTOM_COLOR+LEFT)
+        lcd.drawNumber(40, 190+20, pointB.lon, CUSTOM_COLOR+LEFT)
+        lcd.drawNumber(40, 190+41, pointB.alt*10, CUSTOM_COLOR+LEFT+PREC1)
+    else  
+        lcd.drawText(40, 190+4, "---", CUSTOM_COLOR+LEFT+MIDSIZE)
+    end  
+    
+    if pointsOk() then
+        local length = posDistance(pointB.lat,pointB.lon,pointA.lat,pointA.lon)
+        lcd.drawNumber(draw.xmid, 220, length*100, CUSTOM_COLOR+LEFT+PREC2)
+    end  
+    
+    if event == EVT_MODEL_LONG then
+        -- set point A
+        pointA.lat = mavsdk.getPositionLatLonInt().lat
+        pointA.lon = mavsdk.getPositionLatLonInt().lon
+        pointA.alt = mavsdk.getPositionAltitudeRelative()
+        pointA.yaw = mavsdk.getPositionHeadingDeg() --mavsdk.getAttYawDeg()
+        pointA.pitch = 0
+if debug then
+  pointA = { lat = 480674167, lon = 78769399, yaw = 0, alt = 3.2, pitch = 0 }
+end    
+        playHaptic(10,0)
+    elseif event == EVT_TELEM_LONG then
+        -- set point B
+        pointB.lat = mavsdk.getPositionLatLonInt().lat
+        pointB.lon = mavsdk.getPositionLatLonInt().lon
+        pointB.alt = mavsdk.getPositionAltitudeRelative()
+        pointB.yaw = mavsdk.getPositionHeadingDeg()
+        pointB.pitch = 0
+if debug then
+  pointB = { lat = 480673693, lon = 78770177, yaw = 90, alt = 4.2, pitch = 0 }
+end
+        playHaptic(10,0)
+    elseif event == EVT_ENTER_LONG then
+        if pointsOk() then --and
+--           (mavsdk.getFlightMode() == apCopterFlightModeAltHold or
+--           mavsdk.getFlightMode() == apCopterFlightModePosHold or
+--           mavsdk.getFlightMode() == apCopterFlightModeLoiter) then
+            cablecam_flightmode_at_start = mavsdk.getFlightMode()
+            cablecam_throttle_at_start = getValue("thr")
+            mavsdk.apSetFlightMode(apCopterFlightModeGuided) -- 4 = Guided
+            cablecam_state = 1 -- start
+            playHaptic(10,5);playHaptic(10,0)
+        else
+            playHaptic(5,5);playHaptic(5,5);playHaptic(10,0)
+        end    
+    end        
+end
+
+
+local cablecam_target = 0
+local cablecam_speed = 0
+local cablecam_tlast = 0
+local cablecam_lat0 = 0
+local cablecam_lon0 = 0
+local cablecam_xScale = 0
+local cablecam_tstart = 0
+local cablecam_run = false
+
+
+local function doPageQuickshotRunning()
+    lcd.setColor(CUSTOM_COLOR, p.GREY)
+    lcd.drawText(5, 45, "A", CUSTOM_COLOR+LEFT+DBLSIZE)
+    lcd.drawText(5, 190, "B", CUSTOM_COLOR+LEFT+DBLSIZE)
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(draw.xsize-5, 190, "EXIT", CUSTOM_COLOR+RIGHT+DBLSIZE)
+    
+    lcd.drawNumber(40, 45-1, pointA.lat, CUSTOM_COLOR+LEFT)
+    lcd.drawNumber(40, 45+20, pointA.lon, CUSTOM_COLOR+LEFT)
+    lcd.drawNumber(40, 190-1, pointB.lat, CUSTOM_COLOR+LEFT)
+    lcd.drawNumber(40, 190+20, pointB.lon, CUSTOM_COLOR+LEFT)
+    
+    -- set display area
+    local pA_x = draw.xmid-100
+    local pA_y = 80
+    local pB_x = draw.xmid+100
+    local pB_y = 200
+    
+    -- draw cable
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(pA_x, pA_y-11, "x", CUSTOM_COLOR+CENTER)
+    lcd.drawText(pB_x, pB_y-11, "x", CUSTOM_COLOR+CENTER)
+    lcd.drawLine(pA_x, pA_y, pB_x, pB_y, SOLID, CUSTOM_COLOR)
+    
+    -- get current vehicle position
+    local cur_lat = mavsdk.getPositionLatLonInt().lat
+    local cur_lon = mavsdk.getPositionLatLonInt().lon
+    local cur_alt = mavsdk.getPositionAltitudeRelative()
+    local cur_yaw = mavsdk.getPositionHeadingDeg()
+if debug then
+  cur_lat = 480674000; cur_lon = 78770000; --cur_yaw = 72
+end  
+    --lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    --lcd.drawNumber(40, 100, cur_lat, CUSTOM_COLOR+LEFT)
+    --lcd.drawNumber(40, 100+20, cur_lon, CUSTOM_COLOR+LEFT)
+    --lcd.drawNumber(40, 100+40, cur_alt*100, CUSTOM_COLOR+LEFT+PREC2)
+    --lcd.drawNumber(40, 100+60, cur_yaw*10, CUSTOM_COLOR+LEFT+PREC1)
+    
+    -- read cable stick
+    local v = getValue("ail")/1024
+    if v > -0.01 and v < 0.01 then v = 0 else cablecam_state = 3 end
+    local desiredSpeed = cablecam_maxSpeed * v
+    
+    local tnow = getTime()
+    
+    -- initialize, for approach to cable
+    if cablecam_state <= 1 then
+        cablecam_state = 2
+        
+        -- get the center position of the area
+        cablecam_lat0 = (pointA.lat + pointB.lat) * 0.5
+        cablecam_lon0 = (pointA.lon + pointB.lon) * 0.5
+        cablecam_xScale = math.cos(math.rad( cablecam_lat0 * 1.0e-7 ))
+        
+        -- find closest path to cable
+--[[        
+        local xA = (pointA.lon - cablecam_lon0) * cablecam_xScale
+        local yA = (pointA.lat - cablecam_lat0)
+        local x3 = (cur_lon - cablecam_lon0) * cablecam_xScale
+        local y3 = (cur_lat - cablecam_lat0)
+        cablecam_target = ( (xA-x3)*(xA+xA) + (yA-y3)*(yA+yA) )/( (xA+xA)*(xA+xA) + (yA+yA)*(yA+yA) )
+]]        
+        local distToA = posDistance(pointA.lat, pointA.lon, cur_lat, cur_lon)
+        local distToB = posDistance(pointB.lat, pointB.lon, cur_lat, cur_lon)
+        if distToA > distToB then 
+            cablecam_target = 1
+        else
+            cablecam_target = 0
+        end  
+        
+        cablecam_speed = cablecam_maxSpeed
+
+        cablecam_tlast = 0
+        cablecam_tstart = tnow
+        cablecam_run = false
+    end  
+    
+    -- wait for guided mode, if we don't have it after 1 sec, jump out
+    local getoutofhere = false
+    if tnow - cablecam_tstart > 100 then
+        if mavsdk.getFlightMode() ~= apCopterFlightModeGuided then getoutofhere = true end
+    else
+        if mavsdk.getFlightMode() == apCopterFlightModeGuided then cablecam_run = true end
+    end 
+   
+    local doUpdate = false
+    if cablecam_run and tnow - cablecam_tlast > 10 then --only every 100 ms
+        doUpdate = true
+   
+        -- move on cable
+        local dt = 0.01*(tnow - cablecam_tlast)
+        
+        --approach desired speed
+        if desiredSpeed > cablecam_speed then
+            cablecam_speed = cablecam_speed + cablecam_maxAcceleration * dt
+            if cablecam_speed > desiredSpeed then cablecam_speed = desiredSpeed end
+        elseif desiredSpeed < cablecam_speed then
+            cablecam_speed = cablecam_speed - cablecam_maxAcceleration * dt
+            if cablecam_speed < desiredSpeed then cablecam_speed = desiredSpeed end
+        else    
+            cablecam_speed = desiredSpeed
+        end
+        
+        --chose target
+        if cablecam_speed > 0.0 then 
+            cablecam_target = 1 
+        elseif cablecam_speed < 0.0 then  
+            cablecam_target = 0 
+        end
+        
+        cablecam_tlast = tnow
+    end    
+    
+    local pCntrl_lat = (pointB.lat - pointA.lat) * cablecam_target + pointA.lat
+    local pCntrl_lon = (pointB.lon - pointA.lon) * cablecam_target + pointA.lon
+    local pCntrl_alt = pointA.alt
+    local pCntrl_yaw = pointA.yaw
+    
+    local pCntrl_speed = cablecam_speed
+   
+    -- draw simulated cable cam position
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawNumber(40, 100, pCntrl_lat, CUSTOM_COLOR+LEFT)
+    lcd.drawNumber(40, 100+20, pCntrl_lon, CUSTOM_COLOR+LEFT)
+    lcd.drawNumber(40, 100+40, pCntrl_alt*100, CUSTOM_COLOR+LEFT+PREC2)
+    lcd.drawNumber(40, 100+60, pCntrl_yaw*10, CUSTOM_COLOR+LEFT+PREC1)
+    
+    lcd.drawNumber(draw.xmid, 220, pCntrl_speed*100, CUSTOM_COLOR+CENTER+PREC2)
+    
+    local pCntrl_x = (pB_x - pA_x) * cablecam_target + pA_x
+    local pCntrl_y = (pB_y - pA_y) * cablecam_target + pA_y
+    
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    drawCircle(pCntrl_x, pCntrl_y, 8)
+    lcd.drawText(pCntrl_x, pCntrl_y-11, "x", CUSTOM_COLOR+CENTER)
+    lcd.setColor(CUSTOM_COLOR, p.YELLOW)
+    lcd.drawLine(pCntrl_x, pCntrl_y,
+            pCntrl_x + 16*math.sin(math.rad(pCntrl_yaw)), pCntrl_y - 16*math.cos(math.rad(pCntrl_yaw)),
+            SOLID, CUSTOM_COLOR)
+          
+    -- draw current vehicle positon
+    local xA = (pointA.lon - cablecam_lon0) * cablecam_xScale
+    local yA = pointA.lat - cablecam_lat0
+    local xV = (cur_lon - cablecam_lon0) * cablecam_xScale
+    local yV = cur_lat - cablecam_lat0
+    
+    local pV_x = (pB_x - pA_x) * (xA - xV)/(xA + xA) + pA_x 
+    local pV_y = (pB_y - pA_y) * (yA - yV)/(yA + yA) + pA_y 
+    if pV_x < draw.xmid-200 then pV_x = draw.xmid-200 end
+    if pV_x > draw.xmid+200 then pV_x = draw.xmid+200 end
+    if pV_y < draw.ymid-100 then pV_y = draw.ymid-100 end
+    if pV_y > draw.ymid+100 then pV_y = draw.ymid+100 end
+    
+    lcd.setColor(CUSTOM_COLOR, p.DARKRED)
+    fillCircle(pV_x, pV_y, 5)
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawLine(pV_x, pV_y,
+                 pV_x + 16*math.sin(math.rad(cur_yaw)), pV_y - 16*math.cos(math.rad(cur_yaw)),
+                 SOLID, CUSTOM_COLOR)
+          
+    -- move vehicle to cable position
+    if doUpdate then
+        --mavsdk.apGotoPosIntAltRelYawDeg(pCntrl_lat, pCntrl_lon, pCntrl_alt, pCntrl_yaw)
+        --mavsdk.apGotoPosIntAltRel(pCntrl_lat, pCntrl_lon, pCntrl_alt)
+        mavsdk.apSimpleGotoPosIntAltRel(pCntrl_lat, pCntrl_lon, pCntrl_alt)
+        mavsdk.apSetGroundSpeed(pCntrl_speed)
+    end    
+    
+    if event == EVT_ENTER_LONG or getoutofhere then
+--        local throttle = getValue("thr")
+--        if throttle < -125 or throttle > 125 then
+--            playThrottleWarning()
+--        else  
+            cablecam_state = 0 -- stop
+            playHaptic(10,5);playHaptic(10,0)
+            if cablecam_flightmode_at_start ~= apCopterFlightModeAltHold and
+               cablecam_flightmode_at_start ~= apCopterFlightModePosHold and
+               cablecam_flightmode_at_start ~= apCopterFlightModeLoiter then 
+                cablecam_flightmode_at_start = apCopterFlightModeAltHold
+            end    
+            if not getoutofhere then
+                mavsdk.apSetFlightMode(cablecam_flightmode_at_start)
+            end  
+--        end    
+    end        
+end
+
+
+
+local function doPageQuickshot()
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawText(draw.xmid, 20-4, "Cable Cam", CUSTOM_COLOR+DBLSIZE+CENTER)
+    if not mavsdk.isReceiving() then return end
+    
+    -- Flight mode
+    lcd.setColor(CUSTOM_COLOR, p.YELLOW)
+    local flightModeStr = getFlightModeStr()
+    if flightModeStr ~= nil then
+        lcd.drawText(draw.xmid, 50, flightModeStr, CUSTOM_COLOR+MIDSIZE+CENTER)
+    end
+    
+    -- cablecam
+    if cablecam_state <= 0 then
+        doPageQuickshotNotRunning()
+    else
+        doPageQuickshotRunning()
+    end
+    
+    if debug then
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+        lcd.drawText(draw.xmid, 238, "!! DEBUG !!", CUSTOM_COLOR+DBLSIZE+CENTER)
+    end  
+end  
+
+
+
 ----------------------------------------------------------------------
 -- InMenu, FullSize Pages
 ----------------------------------------------------------------------
@@ -1783,6 +2166,8 @@ local function widgetRefresh(widget)
         event = 0
     end    
     
+    gimbalHasControl(pages[page] ~= cPageIdQuickshot) -- don't give it control during quickshots
+    
     doAlways(0)
     
     if pages[page] == cPageIdAutopilot then
@@ -1806,6 +2191,8 @@ local function widgetRefresh(widget)
         doPageGimbal()
     elseif pages[page] == cPageIdPrearm then
         doPagePrearm()
+    elseif pages[page] == cPageIdQuickshot then
+        doPageQuickshot()
     end  
   
     -- do this post so that the pages can overwrite RTN & SYS use
