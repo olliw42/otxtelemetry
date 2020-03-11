@@ -107,6 +107,8 @@ local function playTelemLost() play("tellost") end
 local function playArmed() play("armed") end    
 local function playDisarmed() play("disarmed") end    
 
+local function playPositionFix() play("posfix") end    
+
 local function playVideoMode() play("modvid") end    
 local function playPhotoMode() play("modpho") end    
 local function playModeChangeFailed() play("modko") end    
@@ -166,7 +168,7 @@ local cPageIdGimbal = 3
 local cPageIdPrearm = 4
 
 local pages = {}
---if pagePrearmEnabled then page_max = page_max+1; pages[page_max] = cPageIdPrearm end
+if pagePrearmEnabled then page_max = page_max+1; pages[page_max] = cPageIdPrearm end
 if pageAutopilotEnabled then page_max = page_max+1; pages[page_max] = cPageIdAutopilot; page = page_max end
 if pageCameraEnabled then page_max = page_max+1; pages[page_max] = cPageIdCamera end
 if pageGimbalEnabled then page_max = page_max+1; pages[page_max] = cPageIdGimbal end
@@ -388,6 +390,9 @@ local status_g = {
     flightmode = nil, --allows to track changes
     armed = nil, --allows to track changes
     gpsstatus = nil, --allows to track changes
+    posfix = nil, --allows to track changes
+    
+    haveposfix = false,
     
     flight_timer_start_10ms = 0,
     flight_time_10ms = 0,
@@ -437,6 +442,11 @@ local function checkStatusChanges()
     if status_g.flightmode == nil or status_g.flightmode ~= mavsdk.getFlightMode() then -- first call or change
         status_g.flightmode = mavsdk.getFlightMode()
         if mavsdk.isReceiving() then playFlightModeSound() end
+    end
+    
+    if status_g.posfix == nil or status_g.posfix ~= status_g.haveposfix then -- first call or change
+        status_g.posfix = status_g.haveposfix
+        if status_g.haveposfix then playPositionFix() end
     end
     
     status_g.gimbal_changed_to_receiving = false
@@ -1109,6 +1119,7 @@ local function drawStatusBar2()
         lcd.setColor(CUSTOM_COLOR, p.RED)
         lcd.drawText(draw.xmid, y-2, "No FIX", CUSTOM_COLOR+DBLSIZE+CENTER)
     end  
+    status_g.haveposfix = haveposfix -- to handle changes
     -- Flight time
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     local timeStr = timeToStr(status_g.flight_time_10ms/100)
