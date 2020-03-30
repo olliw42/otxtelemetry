@@ -4,7 +4,7 @@
 -- licence: GPL 3.0
 --
 -- Version: 0.3.0, 2020-03-15
--- require MAVLink-OpenTx version: v03
+-- require MAVLink-OpenTx version: v05
 --
 -- Documentation:
 --
@@ -2186,7 +2186,7 @@ local function widgetRefresh(widget)
         doPageInMenu()
         return
     end
-    lcd.backlightOn()
+    lcd.resetBacklightTimeout()
     
     -- EVT_ENTER_xxx, EVT_TELEM_xx, EVT_MODEL_xxx, EVT_SYS_xxx, EVT_RTN_xxx
     -- EVT_VIRTUAL_DEC, EVT_VIRTUAL_INC
