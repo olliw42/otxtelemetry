@@ -3,8 +3,8 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.3.0, 2020-03-15
--- require MAVLink-OpenTx version: v03
+-- Version: 0.5.0, 2020-03-30
+-- require MAVLink-OpenTx version: v05
 --
 -- Documentation:
 --
@@ -63,7 +63,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.3.0 2020-03-15"
+local versionStr = "0.5.0 2020-03-30"
 
 
 ----------------------------------------------------------------------
