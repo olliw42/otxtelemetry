@@ -1127,6 +1127,12 @@ local function drawStatusBar2()
     lcd.drawText(draw.xsize-3, y-2, timeStr, CUSTOM_COLOR+DBLSIZE+RIGHT)
 end      
 
+local function drawIsInitializing()
+    if mavsdk.isReceiving() and not mavsdk.isInitialized() then
+        drawWarningBox("is initializing")
+    end
+end
+
 local function drawStatusText()
     for i=1,3 do
         printStatustextAt(i, 3, 5, 230+(i-1)*13, SMLSIZE)
@@ -1174,6 +1180,8 @@ local function doPageAutopilot()
     drawBatteryStatus()
     drawStatusBar2()
     drawStatusText()
+    
+    drawIsInitializing()
 end  
 
 
