@@ -3,8 +3,8 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.5.0, 2020-03-30
--- require MAVLink-OpenTx version: v05
+-- Version: 0.7.0, 2020-04-01
+-- require MAVLink-OpenTx version: v07
 --
 -- Documentation:
 --
@@ -63,7 +63,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.5.0 2020-03-30"
+local versionStr = "0.7.0 2020-04-01"
 
 
 ----------------------------------------------------------------------
@@ -462,175 +462,7 @@ end
 -- Draw Helper
 ----------------------------------------------------------------------
 
-local function hasbit(x, p)
-    return x % (p + p) >= p       
-end
-
--- THANKS to Adafruit and its GFX library ! 
--- https://learn.adafruit.com/adafruit-gfx-graphics-library
-
-local function drawCircleQuarter(x0, y0, r, corners)
-    local f = 1 - r
-    local ddF_x = 1
-    local ddF_y = -2 * r
-    local x = 0
-    local y = r
-     if corners >= 15 then
-        lcd.drawPoint(x0, y0 + r, CUSTOM_COLOR)
-        lcd.drawPoint(x0, y0 - r, CUSTOM_COLOR)
-        lcd.drawPoint(x0 + r, y0, CUSTOM_COLOR)
-        lcd.drawPoint(x0 - r, y0, CUSTOM_COLOR)
-    end    
-    while x < y do
-        if f >= 0 then
-            y = y - 1
-            ddF_y = ddF_y + 2
-            f = f + ddF_y
-        end
-        x = x + 1
-        ddF_x = ddF_x + 2
-        f = f + ddF_x
-        if hasbit(corners,4) then
-            lcd.drawPoint(x0 + x, y0 + y, CUSTOM_COLOR)
-            lcd.drawPoint(x0 + y, y0 + x, CUSTOM_COLOR)
-        end
-        if hasbit(corners,2) then
-            lcd.drawPoint(x0 + x, y0 - y, CUSTOM_COLOR)
-            lcd.drawPoint(x0 + y, y0 - x, CUSTOM_COLOR)
-        end
-        if hasbit(corners,8) then
-            lcd.drawPoint(x0 - y, y0 + x, CUSTOM_COLOR)
-            lcd.drawPoint(x0 - x, y0 + y, CUSTOM_COLOR)
-        end
-        if hasbit(corners,1) then
-            lcd.drawPoint(x0 - y, y0 - x, CUSTOM_COLOR)
-            lcd.drawPoint(x0 - x, y0 - y, CUSTOM_COLOR)
-        end
-    end
-end
-
-local function drawCircle(x0, y0, r)
-    drawCircleQuarter(x0, y0, r, 15)
-end
-
-local function fillCircleQuarter(x0, y0, r, corners)
-    local f = 1 - r
-    local ddF_x = 1
-    local ddF_y = -2 * r
-    local x = 0
-    local y = r
-    local px = x
-    local py = y
-    if corners >= 3 then
-        lcd.drawLine(x0, y0 - r, x0, y0 + r + 1, SOLID, CUSTOM_COLOR)
-    end
-    while x < y do
-        if f >= 0 then
-            y = y - 1
-            ddF_y = ddF_y + 2
-            f = f + ddF_y
-        end
-        x = x + 1
-        ddF_x = ddF_x + 2
-        f = f + ddF_x
-        if x < (y + 1) then
-            if hasbit(corners,1) then
-                --writeFastVLine(x0 + x, y0 - y, 2 * y + delta, color);
-                lcd.drawLine(x0 + x, y0 - y, x0 + x, y0 + y + 1, SOLID, CUSTOM_COLOR)
-            end    
-            if hasbit(corners,2) then
-                --writeFastVLine(x0 - x, y0 - y, 2 * y + delta, color);
-                lcd.drawLine(x0 - x, y0 - y, x0 - x, y0 + y + 1, SOLID, CUSTOM_COLOR)
-            end    
-        end
-        if y ~= py then
-            if hasbit(corners,1) then
-                --writeFastVLine(x0 + py, y0 - px, 2 * px + delta, color);
-                lcd.drawLine(x0 + py, y0 - px, x0 + py, y0 + px + 1, SOLID, CUSTOM_COLOR)
-            end    
-            if hasbit(corners,2) then
-                --writeFastVLine(x0 - py, y0 - px, 2 * px + delta, color);
-                lcd.drawLine(x0 - py, y0 - px, x0 - py, y0 + px + 1, SOLID, CUSTOM_COLOR)
-            end    
-            py = y
-        end
-        px = x
-    end
-end
-
-local function fillCircle(x0, y0, r)
-    fillCircleQuarter(x0, y0, r, 3)
-end
-
-local function drawTriangle(x0, y0, x1, y1, x2, y2)
-    lcd.drawLine(x0, y0, x1, y1, SOLID, CUSTOM_COLOR)
-    lcd.drawLine(x1, y1, x2, y2, SOLID, CUSTOM_COLOR)
-    lcd.drawLine(x2, y2, x0, y0, SOLID, CUSTOM_COLOR)
-end
-
--- code for drawLineWithClipping() is from Yaapu FrSky Telemetry Script, thx!
--- Cohen–Sutherland clipping algorithm
--- https://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
-local function computeOutCode(x, y, xmin, ymin, xmax, ymax)
-    local code = 0;
-    if x < xmin then
-        code = bit32.bor(code,1);
-    elseif x > xmax then
-        code = bit32.bor(code,2);
-    end
-    if y < ymin then
-        code = bit32.bor(code,8);
-    elseif y > ymax then
-        code = bit32.bor(code,4);
-    end
-    return code;
-end
-
-local function drawLineWithClippingXY(x0, y0, x1, y1, xmin, xmax, ymin, ymax, style, color)
-    local outcode0 = computeOutCode(x0, y0, xmin, ymin, xmax, ymax);
-    local outcode1 = computeOutCode(x1, y1, xmin, ymin, xmax, ymax);
-    local accept = false;
-
-    while true do
-        if bit32.bor(outcode0,outcode1) == 0 then
-            accept = true;
-            break;
-        elseif bit32.band(outcode0,outcode1) ~= 0 then
-            break;
-        else
-            local x = 0
-            local y = 0
-            local outcodeOut = outcode0 ~= 0 and outcode0 or outcode1
-            if bit32.band(outcodeOut,4) ~= 0 then --point is above the clip window
-                x = x0 + (x1 - x0) * (ymax - y0) / (y1 - y0)
-                y = ymax
-            elseif bit32.band(outcodeOut,8) ~= 0 then --point is below the clip window
-                x = x0 + (x1 - x0) * (ymin - y0) / (y1 - y0)
-                y = ymin
-            elseif bit32.band(outcodeOut,2) ~= 0 then --point is to the right of clip window
-                y = y0 + (y1 - y0) * (xmax - x0) / (x1 - x0)
-                x = xmax
-            elseif bit32.band(outcodeOut,1) ~= 0 then --point is to the left of clip window
-                y = y0 + (y1 - y0) * (xmin - x0) / (x1 - x0)
-                x = xmin
-            end
-            if outcodeOut == outcode0 then
-                x0 = x
-                y0 = y
-                outcode0 = computeOutCode(x0, y0, xmin, ymin, xmax, ymax)
-            else
-                x1 = x
-                y1 = y
-                outcode1 = computeOutCode(x1, y1, xmin, ymin, xmax, ymax)
-            end
-        end
-    end
-    if accept then
-        lcd.drawLine(x0, y0, x1, y1, style, color)
-    end
-end
-
-local function drawLineWithClipping(ox, oy, angle, len, xmin, xmax, ymin, ymax, style, color)
+local function drawTiltedLineWithClipping(ox, oy, angle, len, xmin, xmax, ymin, ymax, style, color)
     local xx = math.cos(math.rad(angle)) * len * 0.5
     local yy = math.sin(math.rad(angle)) * len * 0.5
   
@@ -639,7 +471,7 @@ local function drawLineWithClipping(ox, oy, angle, len, xmin, xmax, ymin, ymax, 
     local y0 = oy - yy
     local y1 = oy + yy    
   
-    drawLineWithClippingXY(x0, y0, x1, y1, xmin, xmax, ymin, ymax, style, color)
+    lcd.drawLineWithClipping(x0, y0, x1, y1, xmin, xmax, ymin, ymax, style, color)
 end
 
 
@@ -760,86 +592,33 @@ local function drawHud()
     --lcd.setColor(CUSTOM_COLOR, lcd.RGB(107,142,35))
     lcd.setColor(CUSTOM_COLOR, p.HUD_EARTH)
     
-    -- this code part is from Yaapu FrSky Telemetry Script, thx!
-    local dx, dy
+    -- this code part is partially from Yaapu FrSky Telemetry Script, thx!
+    lcd.drawHudRectangle(pitch, roll, minX, maxX, minY, maxY, CUSTOM_COLOR)
+    
+    local ox, oy
     local cx, cy
     if roll == 0 or math.abs(roll) == 180 then
-        dx = 0
-        dy = pitch * 1.85
+        ox = (minX+maxX)/2
+        oy = (minY+maxY)/2 + pitch * 1.85
         cx = 0
         cy = 21
     else
-        dx = math.sin(math.rad(roll)) * pitch
-        dy = math.cos(math.rad(roll)) * pitch * 1.85
-        cx = math.cos(math.rad(90 + roll)) * 21
-        cy = math.sin(math.rad(90 + roll)) * 21
+        ox = (minX+maxX)/2 + math.sin(math.rad(roll)) * pitch
+        oy = (minY+maxY)/2 + math.cos(math.rad(roll)) * pitch * 1.85
+        cx = -math.sin(math.rad(roll)) * 21 --math.cos(math.rad(90 + roll)) * 21
+        cy = math.cos(math.rad(roll)) * 21 --math.sin(math.rad(90 + roll)) * 21
     end
 
-    local widthY = (maxY-minY)
-    local ox = (minX+maxX)/2 + dx
-    local oy = (minY+maxY)/2 + dy
-    local angle = math.tan(math.rad(-roll))
-    
-    if roll == 0 then -- prevent divide by zero
-        lcd.drawFilledRectangle(
-          minX, math.max( minY, dy + minY + widthY/2 ),
-          maxX - minX, math.min( widthY, widthY/2 - dy + (math.abs(dy) > 0 and 1 or 0) ),
-          CUSTOM_COLOR)
-  
-    elseif math.abs(roll) >= 180 then
-        lcd.drawFilledRectangle(
-          minX, minY,
-          maxX - minX, math.min( widthY, widthY/2 + dy ),
-          CUSTOM_COLOR)
-    else
-        local inverted = math.abs(roll) > 90
-        local fillNeeded = false
-        local yRect = inverted and 0 or LCD_H
-    
-        local step = 2
-        local steps = widthY/step - 1
-        local yy = 0
-    
-        if 0 < roll and roll < 180 then -- sector ]0,180[
-            for s = 0, steps do
-                yy = minY + s*step
-                xx = ox + (yy - oy)/angle
-                if xx >= minX and xx <= maxX then
-                    lcd.drawFilledRectangle(xx, yy, maxX-xx+1, step, CUSTOM_COLOR)
-                elseif xx < minX then
-                    yRect = inverted and math.max(yy,yRect)+step or math.min(yy,yRect)
-                    fillNeeded = true
-                end
-            end
-        elseif -180 < roll and roll < 0 then -- sector ]-180,0[
-            for s = 0,steps do    
-                yy = minY + s*step
-                xx = ox + (yy - oy)/angle
-                if xx >= minX and xx <= maxX then
-                    lcd.drawFilledRectangle(minX, yy, xx-minX, step, CUSTOM_COLOR)
-                elseif xx > maxX then
-                    yRect = inverted and math.max(yy,yRect)+step or math.min(yy,yRect)
-                    fillNeeded = true
-                end
-            end
-        end
-        
-        if fillNeeded then
-            local yMin = inverted and minY or yRect
-            local height = inverted and yRect-minY or maxY-yRect
-            lcd.drawFilledRectangle(minX, yMin, maxX-minX, height, CUSTOM_COLOR)
-        end
-    end
-  
+
     lcd.setColor(CUSTOM_COLOR, p.BLACK)
     for i = 1,8 do
-        drawLineWithClipping(
-            (minX+maxX)/2 + dx - i*cx, (minY+maxY)/2 + dy + i*cy,
+        drawTiltedLineWithClipping(
+            ox - i*cx, oy + i*cy,
             -roll,
             (i % 2 == 0 and 80 or 40), minX + 2, maxX - 2, minY + 10, maxY - 2,
             DOTTED, CUSTOM_COLOR)
-        drawLineWithClipping(
-            (minX+maxX)/2 + dx + i*cx, (minY+maxY)/2 + dy - i*cy,
+        drawTiltedLineWithClipping(
+            ox + i*cx, oy - i*cy,
             -roll,
             (i % 2 == 0 and 80 or 40), minX + 2, maxX - 2, minY + 10, maxY - 2,
             DOTTED, CUSTOM_COLOR)
@@ -1364,13 +1143,13 @@ local function doPageCamera()
         lcd.drawText(xmid+60, 70, "Photo", CUSTOM_COLOR+DBLSIZE+CENTER)
     end
     
-    drawCircle(xmid, 175, 45)
+    lcd.drawCircle(xmid, 175, 45, CUSTOM_COLOR)
     if status.photo_on or status.video_on then
         lcd.setColor(CUSTOM_COLOR, p.RED)
         lcd.drawFilledRectangle(xmid-27, 175-27, 54, 54, CUSTOM_COLOR+SOLID)    
     else
         lcd.setColor(CUSTOM_COLOR, p.DARKRED)
-        fillCircle(xmid, 175, 39)
+        lcd.drawFilledCircle(xmid, 175, 39, CUSTOM_COLOR)
     end
     if status.photo_on then
         lcd.setColor(CUSTOM_COLOR, p.YELLOW)
@@ -1605,12 +1384,12 @@ local function doPageGimbal()
     y = 100
     local r = 80
     lcd.setColor(CUSTOM_COLOR, p.YELLOW)
-    drawCircleQuarter(x, y, r, 4)    
+    lcd.drawCircleQuarter(x, y, r, 4, CUSTOM_COLOR)    
     
     if gimbal_controlisactive then
         lcd.setColor(CUSTOM_COLOR, p.WHITE)
         local cangle = gimbal_pitch_cntrl_deg
-        drawCircle(x + (r-10)*math.cos(math.rad(cangle)), y - (r-10)*math.sin(math.rad(cangle)), 7)
+        lcd.drawCircle(x + (r-10)*math.cos(math.rad(cangle)), y - (r-10)*math.sin(math.rad(cangle)), 7, CUSTOM_COLOR)
     else
         lcd.setColor(CUSTOM_COLOR, p.GREY)
     end 
@@ -1622,7 +1401,7 @@ local function doPageGimbal()
     local gangle = pitch
     if gangle > 10 then gangle = 10 end
     if gangle < -100 then gangle = -100 end
-    fillCircle(x + (r-10)*math.cos(math.rad(gangle)), y - (r-10)*math.sin(math.rad(gangle)), 5)
+    lcd.drawFilledCircle(x + (r-10)*math.cos(math.rad(gangle)), y - (r-10)*math.sin(math.rad(gangle)), 5, CUSTOM_COLOR)
     
     y = 239
     if gimbal_menu.active then
