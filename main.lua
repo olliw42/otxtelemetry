@@ -1219,6 +1219,7 @@ local gimbal_mode = 6 -- using this to mark as invalid makes it easier to displa
 local gimbal_hascontrol = true -- used to disable domountcontrol, e.g. when in quickshots
 local gimbal_controlispossible = false -- indicates if gimbal control is currently possible
 local gimbal_controlisactive = false -- indicates if gimbal control is currently active
+local gimbal_tlast = 0 -- rate limit gimbal control to 5/sec
 
 local function gimbalSetMode(mode, sound_flag)
     if mode == 1 then
@@ -1304,7 +1305,14 @@ local function gimbalDoAlways()
     if not gimbal_hascontrol then return end
     gimbal_controlispossible = true
     if gimbal_mode == 2 then
-        gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        local tnow = getTime()
+        if (tnow - gimbal_tlast) >= 25 then --we are slow
+            gimbal_tlast = tnow - 10
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        elseif (tnow - gimbal_tlast) >= 17 then
+            gimbal_tlast = tnow
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        end
         gimbal_controlisactive = true
     end    
 end  
