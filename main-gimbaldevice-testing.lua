@@ -3,8 +3,8 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.11.0, 2020-06-07
--- require MAVLink-OpenTx version: v11
+-- Version: 0.7.0, 2020-04-01
+-- require MAVLink-OpenTx version: v07
 --
 -- Documentation:
 --
@@ -63,7 +63,7 @@ local config_g = {
 -- Version
 ----------------------------------------------------------------------
 
-local versionStr = "0.11.0 2020-06-07"
+local versionStr = "0.7.0 2020-04-01"
 
 
 ----------------------------------------------------------------------
@@ -1215,7 +1215,6 @@ local function drawNoGimbal()
 end
 
 local gimbal_pitch_cntrl_deg = nil
-local gimbal_yaw_cntrl_deg = 0
 local gimbal_mode = 6 -- using this to mark as invalid makes it easier to display
 local gimbal_hascontrol = true -- used to disable domountcontrol, e.g. when in quickshots
 local gimbal_controlispossible = false -- indicates if gimbal control is currently possible
@@ -1250,10 +1249,13 @@ end
 -- calling mavsdk.gimbalSetPitchYawDeg() sets mode implicitely to MAVLink targeting
 local function gimbalSetPitchYawDeg(pitch, yaw)
     if config_g.adjustForArduPilotBug then 
-        mavsdk.gimbalSetPitchYawDeg(pitch*100, yaw*100)
+        --mavsdk.gimbalSetPitchYawDeg(pitch*100, yaw*100)
     else    
-        mavsdk.gimbalSetPitchYawDeg(pitch, yaw)
+        --mavsdk.gimbalSetPitchYawDeg(pitch, yaw)
     end
+-- ????    mavsdk.gimbaldevSetPitchYawDeg(pitch, yaw)
+-- ????    mavsdk.gimbalmanSetPitchYawDeg(pitch, yaw)
+    mavsdk.gimbalmanSetPitchYawDegCmd(pitch, yaw)
     gimbal_mode = 2
 end
 
@@ -1281,13 +1283,14 @@ local function gimbalDoAlways()
     if not mavsdk.gimbalIsReceiving() then
         return
     end
+--[[  
     -- set gimbal into default MAVLink targeting mode upon connection
     if status_g.gimbal_changed_to_receiving then
         gimbalSetMode(config_g.gimbalDefaultTargetingMode, false)
         gimbal_menu.idx = config_g.gimbalDefaultTargetingMode
         gimbal_menu.initialized = true;
     end  
-
+]]    
     -- pitch control slider
     local pitch_cntrl = getValue(config_g.gimbalPitchSlider)
     if pitch_cntrl ~= nil then 
@@ -1295,14 +1298,7 @@ local function gimbalDoAlways()
         if gimbal_pitch_cntrl_deg > 0 then gimbal_pitch_cntrl_deg = 0 end
         if gimbal_pitch_cntrl_deg < -90 then gimbal_pitch_cntrl_deg = -90 end
     end
-    -- yaw control slider
-    local yaw_cntrl = getValue("ls")
-    if yaw_cntrl ~= nil then 
-        gimbal_yaw_cntrl_deg = yaw_cntrl/1008*75
-        if gimbal_yaw_cntrl_deg > 75 then gimbal_yaw_cntrl_deg = 75 end
-        if gimbal_yaw_cntrl_deg < -75 then gimbal_yaw_cntrl_deg = -75 end
-    end
-    
+--[[    
     -- control, but only if "allowed"
     gimbal_controlispossible = false
     gimbal_controlisactive = false
@@ -1322,14 +1318,25 @@ local function gimbalDoAlways()
         end
         gimbal_controlisactive = true
     end    
+]]    
+    gimbal_controlispossible = true
+    local tnow = getTime()
+        if (tnow - gimbal_tlast) >= 25 then --we are slow
+            gimbal_tlast = tnow - 10
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        elseif (tnow - gimbal_tlast) >= 17 then
+            gimbal_tlast = tnow
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, 0)
+        end
+    gimbal_controlisactive = true
 end  
 
 
 local function doPageGimbal()
     if drawNoGimbal() then return end
-    local info = mavsdk.gimbalGetInfo()
+    local info =  mavsdk.gimbalGetInfo()
     
-    local compid = info.compid
+    local compid =  info.compid
     local gimbalStr = string.format("%s %d", string.upper(getGimbalIdStr(compid)), compid)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(1, 20, gimbalStr, CUSTOM_COLOR)
@@ -1340,11 +1347,27 @@ local function doPageGimbal()
     local vendorStr = info.vendor_name
     lcd.drawText(LCD_W-1, 40, vendorStr, CUSTOM_COLOR+RIGHT)
     
-    local versionStr = info.firmware_version
+    local versionStr = mavsdk.gimbaldevGetInfo().firmware_version --info.firmware_version
     lcd.drawText(LCD_W-1, 60, versionStr, CUSTOM_COLOR+RIGHT)
+    
+    if mavsdk.isGimbalManager() then
+        lcd.drawText(1, 40, "is manager", CUSTOM_COLOR)
+        if mavsdk.gimbalIsInitialized() then
+            lcd.drawText(1, 60, "is initialized", CUSTOM_COLOR)
+        end  
+    else
+        if mavsdk.gimbalHasManager() then
+            lcd.drawText(1, 40, "has manager", CUSTOM_COLOR)
+        end  
+        if mavsdk.gimbalmanIsInitialized() then
+            lcd.drawText(1, 60, "is initialized", CUSTOM_COLOR)
+        end  
+    end
+  
     
     local x = 0;
     local y = 20;
+--[[    
     if gimbal_controlispossible then 
     if event == EVT_ENTER_LONG then
         if not gimbal_menu.initialized then
@@ -1378,7 +1401,7 @@ local function doPageGimbal()
         end    
     end
     end
-    
+]]    
     -- DISPLAY
     local is_armed = mavsdk.gimbalGetStatus().is_armed
     local prearm_ok = mavsdk.gimbalGetStatus().prearm_ok
@@ -1435,17 +1458,18 @@ local function doPageGimbal()
         local h = gimbal_menu.selector_height
         lcd.setColor(CUSTOM_COLOR, p.BLUE)
         lcd.drawFilledRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
-        lcd.setColor(CUSTOM_COLOR, p.WHITE)
-        lcd.drawRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
-        lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_menu.idx], CUSTOM_COLOR+MIDSIZE+CENTER)
+        --lcd.setColor(CUSTOM_COLOR, p.WHITE)
+        --lcd.drawRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
+        --lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_menu.idx], CUSTOM_COLOR+MIDSIZE+CENTER)
     else
         if gimbal_controlispossible then
             lcd.setColor(CUSTOM_COLOR, p.WHITE)
         else    
             lcd.setColor(CUSTOM_COLOR, p.GREY)
         end    
-        lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_mode], CUSTOM_COLOR+MIDSIZE+CENTER)
+        --lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_mode], CUSTOM_COLOR+MIDSIZE+CENTER)
     end
+
 end  
 
 

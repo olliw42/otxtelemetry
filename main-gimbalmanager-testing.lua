@@ -1221,6 +1221,23 @@ local gimbal_hascontrol = true -- used to disable domountcontrol, e.g. when in q
 local gimbal_controlispossible = false -- indicates if gimbal control is currently possible
 local gimbal_controlisactive = false -- indicates if gimbal control is currently active
 local gimbal_tlast = 0 -- rate limit gimbal control to 5/sec
+--[[
+    GIMBALCLIENT_MODE_NONE = 0,
+	  GIMBALCLIENT_MODE_RETRACT,
+	  GIMBALCLIENT_MODE_NEUTRAL,
+	  GIMBALCLIENT_MODE_OVERRIDE,
+	  GIMBALCLIENT_MODE_NUDGE,
+	  GIMBALCLIENT_MODE_RC_NUDGE,
+	  GIMBALCLIENT_MODE_RC_OVERRIDE,
+
+	  GIMBALCLIENT_SETFLAG_GCS_OVERRIDE = 10,
+	  GIMBALCLIENT_SETFLAG_GCS_NUDGE,
+	  GIMBALCLIENT_SETFLAG_RC_OVERRIDE,
+	  GIMBALCLIENT_SETFLAG_RC_NUDGE,
+	  GIMBALCLIENT_SETFLAG_CMD_OVERRIDE,
+	  GIMBALCLIENT_SETFLAG_CMD_NUDGE,
+]]
+local gimbal_client_mode = 10 --GIMBALCLIENT_SETFLAG_GCS_OVERRIDE
 
 local function gimbalSetMode(mode, sound_flag)
     if mode == 1 then
@@ -1250,11 +1267,15 @@ end
 -- calling mavsdk.gimbalSetPitchYawDeg() sets mode implicitely to MAVLink targeting
 local function gimbalSetPitchYawDeg(pitch, yaw)
     if config_g.adjustForArduPilotBug then 
-        mavsdk.gimbalSetPitchYawDeg(pitch*100, yaw*100)
+        --mavsdk.gimbalSetPitchYawDeg(pitch*100, yaw*100)
     else    
-        mavsdk.gimbalSetPitchYawDeg(pitch, yaw)
+        --mavsdk.gimbalSetPitchYawDeg(pitch, yaw)
     end
     gimbal_mode = 2
+--mavsdk.gimbalDeviceSetPitchYawDeg(pitch, yaw)
+--mavsdk.gimbalClientCmdSetPitchYawDeg(pitch, yaw)
+    mavsdk.gimbalClientSetMode(gimbal_client_mode)
+    mavsdk.gimbalClientSetPitchYawDeg(pitch, yaw)
 end
 
 local function gimbalHasControl(flag)
@@ -1276,18 +1297,46 @@ local function gimbal_menu_set()
     end    
 end
 
+local gimbal_client_menu = {
+    active = false, idx = -1, idx_onenter = -1, min = 1, max = 7, default = 2,
+    option = { "None", "GCS Override", "GCS Nudge", "RC Override", "RC Nudge", 
+               "MISSION Override", "MISSION Nudge", "set mode"  },
+    selector_width = 240, selector_height = 34,
+}
+
+local function gimbal_client_menu_set()
+    if gimbal_client_menu.idx >= 1 and gimbal_client_menu.idx <= 7 then 
+        local i = 0
+        if gimbal_client_menu.idx >= 2 then i = gimbal_client_menu.idx+8 end
+        gimbal_client_mode = i
+    else    
+        gimbal_client_menu.idx = 8
+    end    
+end
+
+local function gimbal_client_menu_option()
+    if gimbal_client_menu.active then
+        return gimbal_client_menu.option[gimbal_client_menu.idx]
+    else
+        local i = 1
+        if gimbal_client_mode >= 10 then i =  gimbal_client_mode-8 end
+        return gimbal_client_menu.option[i]
+    end    
+end
+
 
 local function gimbalDoAlways()
     if not mavsdk.gimbalIsReceiving() then
         return
     end
+--[[  
     -- set gimbal into default MAVLink targeting mode upon connection
     if status_g.gimbal_changed_to_receiving then
         gimbalSetMode(config_g.gimbalDefaultTargetingMode, false)
         gimbal_menu.idx = config_g.gimbalDefaultTargetingMode
         gimbal_menu.initialized = true;
     end  
-
+]]    
     -- pitch control slider
     local pitch_cntrl = getValue(config_g.gimbalPitchSlider)
     if pitch_cntrl ~= nil then 
@@ -1303,6 +1352,7 @@ local function gimbalDoAlways()
         if gimbal_yaw_cntrl_deg < -75 then gimbal_yaw_cntrl_deg = -75 end
     end
     
+--[[    
     -- control, but only if "allowed"
     gimbal_controlispossible = false
     gimbal_controlisactive = false
@@ -1322,14 +1372,25 @@ local function gimbalDoAlways()
         end
         gimbal_controlisactive = true
     end    
+]]    
+    gimbal_controlispossible = true
+    local tnow = getTime()
+        if (tnow - gimbal_tlast) >= 25 then --we are slow
+            gimbal_tlast = tnow - 10
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, gimbal_yaw_cntrl_deg)
+        elseif (tnow - gimbal_tlast) >= 17 then
+            gimbal_tlast = tnow
+            gimbalSetPitchYawDeg(gimbal_pitch_cntrl_deg, gimbal_yaw_cntrl_deg)
+        end
+    gimbal_controlisactive = true
 end  
 
 
 local function doPageGimbal()
     if drawNoGimbal() then return end
-    local info = mavsdk.gimbalGetInfo()
+    local info =  mavsdk.gimbalGetInfo()
     
-    local compid = info.compid
+    local compid =  info.compid
     local gimbalStr = string.format("%s %d", string.upper(getGimbalIdStr(compid)), compid)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(1, 20, gimbalStr, CUSTOM_COLOR)
@@ -1343,8 +1404,70 @@ local function doPageGimbal()
     local versionStr = info.firmware_version
     lcd.drawText(LCD_W-1, 60, versionStr, CUSTOM_COLOR+RIGHT)
     
+    if mavsdk.gimbalClientIsReceiving() then
+        lcd.drawText(1, 35, "client is receiving", CUSTOM_COLOR)
+    end    
+    local clientInfo = mavsdk.gimbalClientGetInfo()
+    if clientInfo.gimbal_manager_id > 0 then
+        local s = string.format("manager is %d", clientInfo.gimbal_manager_id)
+        lcd.drawText(1, 50, s, CUSTOM_COLOR)
+    end
+    if mavsdk.gimbalClientIsInitialized() then
+        lcd.drawText(1, 65, "client is initialized", CUSTOM_COLOR)
+    end
+  
+    local GMFLAGS_GCS_NUDGE              = 2097152
+    local GMFLAGS_GCS_OVERRIDE           = 4194304
+    local GMFLAGS_MISSION_NOTOVERRIDE    = 8388608
+    local GMFLAGS_MISSION_NUDGE          = 2*8388608
+    local GMFLAGS_RC_NUDGE               = 4*8388608
+    local GMFLAGS_RC_OVERRIDE            = 8*8388608
+    local GMFLAGS_COMPANION_NUDGE        = 16*8388608
+    local GMFLAGS_COMPANION_OVERRIDE     = 32*8388608
+        
+    local gm_flags = mavsdk.gimbalClientGetStatus().flags
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    y = 185
+    lcd.drawText(1, y, "CC:", CUSTOM_COLOR)
+    if bit32.btest(gm_flags,mavsdk.GMFLAGS_COMPANION_OVERRIDE) then
+        lcd.drawText(50, y, "o", CUSTOM_COLOR)
+    elseif bit32.btest(gm_flags,GMFLAGS_COMPANION_NUDGE) then
+        lcd.drawText(50, y, "n", CUSTOM_COLOR)
+    else    
+        lcd.drawText(50, y, "-", CUSTOM_COLOR)
+    end
+    y = y + 15
+    lcd.drawText(1, y, "M:", CUSTOM_COLOR)
+    if not bit32.btest(gm_flags,GMFLAGS_MISSION_NOTOVERRIDE) then
+        lcd.drawText(50, y, "o", CUSTOM_COLOR)
+    elseif bit32.btest(gm_flags,GMFLAGS_MISSION_NUDGE) then
+        lcd.drawText(50, y, "n", CUSTOM_COLOR)
+    else    
+        lcd.drawText(50, y, "-", CUSTOM_COLOR)
+    end      
+    y = y + 15
+    lcd.drawText(1, y, "GCS:", CUSTOM_COLOR)
+    if bit32.btest(gm_flags,GMFLAGS_GCS_OVERRIDE) then
+        lcd.drawText(50, y, "o", CUSTOM_COLOR)
+    elseif bit32.btest(gm_flags,GMFLAGS_GCS_NUDGE) then
+        lcd.drawText(50, y, "n", CUSTOM_COLOR)
+    else    
+        lcd.drawText(50, y, "-", CUSTOM_COLOR)
+    end      
+    y = y + 15
+    lcd.drawText(1, y, "RC:", CUSTOM_COLOR)
+    if bit32.btest(gm_flags,GMFLAGS_RC_OVERRIDE) then
+        lcd.drawText(50, y, "o", CUSTOM_COLOR)
+    elseif bit32.btest(gm_flags,GMFLAGS_RC_NUDGE) then
+        lcd.drawText(50, y, "n", CUSTOM_COLOR)
+    else    
+        lcd.drawText(50, y, "-", CUSTOM_COLOR)
+    end      
+    lcd.drawNumber(1, y+15, gm_flags, CUSTOM_COLOR)
+  
     local x = 0;
     local y = 20;
+--[[    
     if gimbal_controlispossible then 
     if event == EVT_ENTER_LONG then
         if not gimbal_menu.initialized then
@@ -1377,6 +1500,38 @@ local function doPageGimbal()
             if gimbal_menu.idx > gimbal_menu.max then gimbal_menu.idx = gimbal_menu.max end
         end    
     end
+    end
+]]    
+    
+    if event == EVT_ENTER_LONG then
+        if gimbal_client_menu.idx < 1 then
+            gimbal_client_menu.idx = gimbal_client_menu.default
+        end
+        if not gimbal_client_menu.active then      
+            gimbal_client_menu.active = true
+            gimbal_client_menu.idx_onenter = gimbal_client_menu.idx -- save current idx
+        else
+            gimbal_client_menu.active = false
+            gimbal_client_menu_set() -- take new idx
+        end
+    elseif event == EVT_SYS_FIRST then
+        if gimbal_client_menu.active then event = 0 end
+    elseif event == EVT_RTN_FIRST then
+        if gimbal_client_menu.active then      
+            event = 0
+            gimbal_client_menu.active = false
+            gimbal_client_menu.idx = gimbal_client_menu.idx_onenter -- restore old idx
+        end    
+    elseif event == EVT_VIRTUAL_DEC then
+        if gimbal_client_menu.active then
+            gimbal_client_menu.idx = gimbal_client_menu.idx - 1
+            if gimbal_client_menu.idx < gimbal_client_menu.min then gimbal_client_menu.idx = gimbal_client_menu.min end
+        end    
+    elseif event == EVT_VIRTUAL_INC then
+        if gimbal_client_menu.active then
+            gimbal_client_menu.idx = gimbal_client_menu.idx + 1
+            if gimbal_client_menu.idx > gimbal_client_menu.max then gimbal_client_menu.idx = gimbal_client_menu.max end
+        end    
     end
     
     -- DISPLAY
@@ -1422,6 +1577,9 @@ local function doPageGimbal()
     if gimbal_pitch_cntrl_deg ~= nil then
         lcd.drawNumber(400, 100, gimbal_pitch_cntrl_deg, CUSTOM_COLOR+XXLSIZE+CENTER)
     end    
+    if gimbal_yaw_cntrl_deg ~= nil then
+        lcd.drawNumber(400, 160, gimbal_yaw_cntrl_deg, CUSTOM_COLOR+CENTER)
+    end    
     
     lcd.setColor(CUSTOM_COLOR, p.RED)
     local gangle = pitch
@@ -1430,6 +1588,7 @@ local function doPageGimbal()
     lcd.drawFilledCircle(x + (r-10)*math.cos(math.rad(gangle)), y - (r-10)*math.sin(math.rad(gangle)), 5, CUSTOM_COLOR)
 
     y = 239
+--[[    
     if gimbal_menu.active then
         local w = gimbal_menu.selector_width
         local h = gimbal_menu.selector_height
@@ -1446,6 +1605,24 @@ local function doPageGimbal()
         end    
         lcd.drawText(draw.xmid, y, gimbal_menu.option[gimbal_mode], CUSTOM_COLOR+MIDSIZE+CENTER)
     end
+]]
+    if gimbal_client_menu.active then
+        local w = gimbal_client_menu.selector_width
+        local h = gimbal_client_menu.selector_height
+        lcd.setColor(CUSTOM_COLOR, p.BLUE)
+        lcd.drawFilledRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
+        lcd.setColor(CUSTOM_COLOR, p.WHITE)
+        lcd.drawRectangle(draw.xmid-w/2, y-3, w, h, CUSTOM_COLOR+SOLID)
+    else
+        if gimbal_controlispossible then
+            lcd.setColor(CUSTOM_COLOR, p.WHITE)
+        else    
+            lcd.setColor(CUSTOM_COLOR, p.GREY)
+        end    
+    end
+    lcd.drawText(draw.xmid, y, gimbal_client_menu_option(), CUSTOM_COLOR+MIDSIZE+CENTER)
+    lcd.drawNumber(400, y, gimbal_client_mode, CUSTOM_COLOR+CENTER)
+
 end  
 
 
