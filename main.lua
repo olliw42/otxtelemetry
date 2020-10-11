@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.16.0 2020-10-11"
+local versionStr = "0.17.0 2020-10-11 rc1"
 
 
 ----------------------------------------------------------------------
