@@ -3,7 +3,7 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.16.0, 2020-10-11
+-- Version: 0.16.0, 2020-10-09
 -- require MAVLink-OpenTx version: v16
 --
 -- Documentation:
@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.16.0 2020-10-11"
+local versionStr = "0.16.0 2020-10-09"
 
 
 ----------------------------------------------------------------------
@@ -45,21 +45,12 @@ local config_g = {
     -- Set to the appropriate value if you want to start teh gimbal in a given targeting mode, 
     -- else set to nil
     -- 2: MAVLink Targeting, 3: RC Targeting, 4: GPS Point Targeting, 5: SysId Targeting
-    gimbalDefaultTargetingMode = 3,
+    gimbalDefaultTargetingMode = 2, --3,
     
     -- Set to true if you use a gimbal and the ArduPilot flight stack,
     -- else set to false (e.g. if you use BetaPilot ;))
-    -- only relevant if gimbalUseGimbalManager = false
-    gimbalAdjustForArduPilotBug = false,
+    adjustForArduPilotBug = false,
     
-    -- Set to a source if you want control the gimbal yaw,
-    -- else set to "", which also disables gimbal yaw control
-    -- only relevant if gimbalUseGimbalManager = true
-    gimbalYawSlider = "", --"ls",
-    
-    -- Set to true for STorM32 gimbal protocol V2, else false for old gimbal protocol v1
-    gimbalUseGimbalManager = true,
-
     -- Set to true if you do not want to hear any voice, else set to false
     disableSound = false,
     
@@ -1226,6 +1217,7 @@ local gimbal_controlispossible = false -- indicates if gimbal control is current
 local gimbal_controlisactive = false -- indicates if gimbal control is currently active
 local gimbal_tlast = 0 -- rate limit gimbal control to 5/sec
 
+
 local function gimbalSetMode(mode, sound_flag)
     if mode == 1 then
         mavsdk.gimbalSendNeutralMode()
@@ -1250,20 +1242,17 @@ local function gimbalSetMode(mode, sound_flag)
     end
 end  
 
--- this is a wrapper, to account for gimbalAdjustForArduPilotBug
+-- this is a wrapper, to account for adjustForArduPilotBug
 -- if V1, calling mavsdk.gimbalSendPitchYawDeg() sets mode implicitely to MAVLink targeting
 local function gimbalSetPitchYawDeg(pitch, yaw)
-    if not config_g.gimbalUseGimbalManager or not mavsdk.gimbalIsProtocolV2() then
-        yaw = 0.0 -- clear yaw since it would turn the copter ! In RC Targeting it doesn't matter anyway
-        if config_g.gimbalAdjustForArduPilotBug then 
+    if not mavsdk.gimbalIsProtocolV2() then
+        if config_g.adjustForArduPilotBug then 
             mavsdk.gimbalSendPitchYawDeg(pitch*100, yaw*100)
         else    
             mavsdk.gimbalSendPitchYawDeg(pitch, yaw)
         end
+        gimbal_mode = 2
     else
-        if config_g.gimbalYawSlider == "" then
-            yaw = 0.0
-        end
         mavsdk.gimbalClientSetNeutral(0)
         if gimbal_mode == 1 then
             mavsdk.gimbalClientSetNeutral(1)
@@ -1312,11 +1301,7 @@ end
 
 
 local function gimbalDoAlways()
-    if config_g.gimbalUseGimbalManager then 
-        mavsdk.gimbalSetProtocolV2(1)
-    else    
-        mavsdk.gimbalSetProtocolV2(0)
-    end
+    mavsdk.gimbalSetProtocolV2(1)
     if not mavsdk.gimbalIsReceiving() then
         return
     end
@@ -1336,7 +1321,7 @@ local function gimbalDoAlways()
         if gimbal_pitch_cntrl_deg < -90 then gimbal_pitch_cntrl_deg = -90 end
     end
     -- yaw control slider
-    local yaw_cntrl = getValue(config_g.gimbalYawSlider)
+    local yaw_cntrl = getValue("ls")
     if yaw_cntrl ~= nil then 
         gimbal_yaw_cntrl_deg = yaw_cntrl/1008*75
         if gimbal_yaw_cntrl_deg > 75 then gimbal_yaw_cntrl_deg = 75 end
@@ -1379,45 +1364,6 @@ end
 
 local function doPageGimbal()
     if drawNoGimbal() then return end
-    local x = 0
-    local y = 0
-    
-    -- MENU HANDLING
---    if gimbal_controlispossible then 
-    if event == EVT_ENTER_LONG then
-        if not gimbal_menu.initialized then
-            gimbal_menu.initialized = true
-            gimbal_menu.idx = gimbal_menu.min
-        end
-        if not gimbal_menu.active then      
-            gimbal_menu.active = true
-            gimbal_menu.idx_onenter = gimbal_menu.idx -- save current idx
-        else
-            gimbal_menu.active = false
-            gimbal_menu_set() -- take new idx
-        end
-    elseif event == EVT_SYS_FIRST then
-        if gimbal_menu.active then event = 0 end
-    elseif event == EVT_RTN_FIRST then
-        if gimbal_menu.active then      
-            event = 0
-            gimbal_menu.active = false
-            gimbal_menu.idx = gimbal_menu.idx_onenter -- restore old idx
-        end    
-    elseif event == EVT_VIRTUAL_DEC then
-        if gimbal_menu.active then
-            gimbal_menu.idx = gimbal_menu.idx - 1
-            if gimbal_menu.idx < gimbal_menu.min then gimbal_menu.idx = gimbal_menu.min end
-        end    
-    elseif event == EVT_VIRTUAL_INC then
-        if gimbal_menu.active then
-            gimbal_menu.idx = gimbal_menu.idx + 1
-            if gimbal_menu.idx > gimbal_menu.max then gimbal_menu.idx = gimbal_menu.max end
-        end    
-    end
---    end
-    
-    -- DISPLAY
     local info =  mavsdk.gimbalGetInfo()
     local compid =  info.compid
     local gimbalStr = string.format("%s %d", string.upper(getGimbalIdStr(compid)), compid)
@@ -1432,7 +1378,7 @@ local function doPageGimbal()
 --    local customStr = info.custom_name
 --    lcd.drawText(LCD_W-1, 65, customStr, CUSTOM_COLOR+RIGHT)
     
-if config_g.gimbalUseGimbalManager and mavsdk.gimbalIsProtocolV2() then
+if mavsdk.gimbalIsProtocolV2() then
     if mavsdk.gimbalClientIsInitialized() then
         lcd.drawText(1, 35, "client initialized", CUSTOM_COLOR)
     elseif mavsdk.gimbalClientIsReceiving() then
@@ -1494,7 +1440,44 @@ if config_g.gimbalUseGimbalManager and mavsdk.gimbalIsProtocolV2() then
         lcd.drawText(50, y, "-", CUSTOM_COLOR)
     end    
 end
+
+    local x = 0;
+    local y = 20;
+--    if gimbal_controlispossible then 
+    if event == EVT_ENTER_LONG then
+        if not gimbal_menu.initialized then
+            gimbal_menu.initialized = true
+            gimbal_menu.idx = gimbal_menu.min
+        end
+        if not gimbal_menu.active then      
+            gimbal_menu.active = true
+            gimbal_menu.idx_onenter = gimbal_menu.idx -- save current idx
+        else
+            gimbal_menu.active = false
+            gimbal_menu_set() -- take new idx
+        end
+    elseif event == EVT_SYS_FIRST then
+        if gimbal_menu.active then event = 0 end
+    elseif event == EVT_RTN_FIRST then
+        if gimbal_menu.active then      
+            event = 0
+            gimbal_menu.active = false
+            gimbal_menu.idx = gimbal_menu.idx_onenter -- restore old idx
+        end    
+    elseif event == EVT_VIRTUAL_DEC then
+        if gimbal_menu.active then
+            gimbal_menu.idx = gimbal_menu.idx - 1
+            if gimbal_menu.idx < gimbal_menu.min then gimbal_menu.idx = gimbal_menu.min end
+        end    
+    elseif event == EVT_VIRTUAL_INC then
+        if gimbal_menu.active then
+            gimbal_menu.idx = gimbal_menu.idx + 1
+            if gimbal_menu.idx > gimbal_menu.max then gimbal_menu.idx = gimbal_menu.max end
+        end    
+    end
+--    end
     
+    -- DISPLAY
     local is_armed = mavsdk.gimbalGetStatus().is_armed
     local prearm_ok = mavsdk.gimbalGetStatus().prearm_ok
     if is_armed then 
@@ -1537,8 +1520,7 @@ end
     if gimbal_pitch_cntrl_deg ~= nil then
         lcd.drawNumber(400, y, gimbal_pitch_cntrl_deg, CUSTOM_COLOR+XXLSIZE+CENTER)
     end    
-    
-    if gimbal_yaw_cntrl_deg ~= nil and config_g.gimbalYawSlider ~= "" then
+    if gimbal_yaw_cntrl_deg ~= nil then
         lcd.drawNumber(400, y+60, gimbal_yaw_cntrl_deg, CUSTOM_COLOR+CENTER)
     end    
     
@@ -1548,7 +1530,6 @@ end
     if gangle < -100 then gangle = -100 end
     lcd.drawFilledCircle(x + (r-10)*math.cos(math.rad(gangle)), y - (r-10)*math.sin(math.rad(gangle)), 5, CUSTOM_COLOR)
 
-    -- MENU DISPLAY
     y = 239
     if gimbal_menu.active then
         local w = gimbal_menu.selector_width
@@ -1670,6 +1651,7 @@ end
 ----------------------------------------------------------------------
 local playIntroSound = true
 
+
 local function doAlways(bkgrd)
 
     if playIntroSound then    
@@ -1705,8 +1687,6 @@ local function widgetBackground(widget)
     doAlways(1)
 end
 
-
-local event_last = 0
 
 local function widgetRefresh(widget)
     if widget.zone.h < 250 then 
@@ -1775,10 +1755,6 @@ local function widgetRefresh(widget)
 --        lcd.setColor(CUSTOM_COLOR, p.WHITE)
 --        lcd.drawNumber(LCD_W/2, 100, mavsdk.getBatCapacity(), CUSTOM_COLOR+DBLSIZE+CENTER)
 --    end  
-
---    lcd.drawNumber(LCD_W-1, 200, event, CUSTOM_COLOR+RIGHT)
---    if event > 0 then event_last = event end
---    lcd.drawNumber(LCD_W-1, 215, event_last, CUSTOM_COLOR+RIGHT)
 end
 
 
