@@ -3,8 +3,8 @@
 -- (c) www.olliw.eu, OlliW, OlliW42
 -- licence: GPL 3.0
 --
--- Version: 0.16.0, 2020-10-11
--- require MAVLink-OpenTx version: v16
+-- Version: 0.17.0, 2020-10-15
+-- require MAVLink-OpenTx version: v17
 --
 -- Documentation:
 --
@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.17.0 2020-10-11 rc1"
+local versionStr = "0.17.0 2020-10-15"
 
 
 ----------------------------------------------------------------------
