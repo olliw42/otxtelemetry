@@ -55,3 +55,9 @@ SOUNDS/OlliWTel/en|wthr|Throttle WarninG!
 SOUNDS/OlliWTel/en|posfix|Position fix acquired
 SOUNDS/OlliWTel/en|qsccam|cable cam started
 SOUNDS/OlliWTel/en|qsccapr|approaching cable
+SOUNDS/OlliWTel/en|xsdef|xshot changed to Default mode
+SOUNDS/OlliWTel/en|xsneut|xshot changed to Neutral mode
+SOUNDS/OlliWTel/en|xsrecent|xshot changed to Re Center
+SOUNDS/OlliWTel/en|xsrcctrl|xshot changed to Rc Control
+SOUNDS/OlliWTel/en|xsroi|xshot changed to P O I Targeting
+SOUNDS/OlliWTel/en|xscable|xshot changed to CableCam
