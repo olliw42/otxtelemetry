@@ -713,11 +713,13 @@ local function drawStatusBar()
     x = 235
     if mavsdk.isReceiving() then
         local rssi = mavsdk.getRadioRssi()
-        lcd.setColor(CUSTOM_COLOR, p.GREEN)
-        if rssi >= 255 then rssi = 0 end
-        if rssi < 50 then lcd.setColor(CUSTOM_COLOR, p.RED) end    
-        lcd.drawText(x, y, "RS:", CUSTOM_COLOR)
-        lcd.drawText(x + 42, y, rssi, CUSTOM_COLOR+CENTER)  
+        if rssi ~= nil then
+            lcd.setColor(CUSTOM_COLOR, p.GREEN)
+            if rssi >= 255 then rssi = 0 end
+            if rssi < 50 then lcd.setColor(CUSTOM_COLOR, p.RED) end    
+            lcd.drawText(x, y, "RS:", CUSTOM_COLOR)
+            lcd.drawText(x + 42, y, rssi, CUSTOM_COLOR+CENTER)  
+        end
     else
         lcd.setColor(CUSTOM_COLOR, p.RED)    
         lcd.drawText(x, y, "RS:--", CUSTOM_COLOR+BLINK)
