@@ -4,7 +4,7 @@
 -- licence: GPL 3.0
 --
 -- Version: see versionStr
--- requires MAVLink-OpenTx version: v26 (@c8ddb73)
+-- requires MAVLink-OpenTx version: v27 (@)
 --
 -- Documentation:
 --
@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.26.0 2021-03-21"
+local versionStr = "0.27.rc02 2021-03-24"
 
 
 ----------------------------------------------------------------------
@@ -223,18 +223,18 @@ end
 
 
 local function getGimbalIdStr(compid)
-    if compid == mavlink.MAV_COMP_ID_GIMBAL then
+    if compid == mavlink.COMP_ID_GIMBAL then
         return "Gimbal1"
-    elseif compid >= mavlink.MAV_COMP_ID_GIMBAL2 and compid <= mavlink.MAV_COMP_ID_GIMBAL6 then
-        return "Gimbal"..tostring(compid - mavlink.MAV_COMP_ID_GIMBAL2 + 2)
+    elseif compid >= mavlink.COMP_ID_GIMBAL2 and compid <= mavlink.COMP_ID_GIMBAL6 then
+        return "Gimbal"..tostring(compid - mavlink.COMP_ID_GIMBAL2 + 2)
     end
     return "Gimbal"
 end    
 
 
 local function getCameraIdStr(compid)
-    if compid >= mavlink.MAV_COMP_ID_CAMERA and compid <= mavlink.MAV_COMP_ID_CAMERA6 then
-        return "Camera"..tostring(compid - mavlink.MAV_COMP_ID_CAMERA + 1)
+    if compid >= mavlink.COMP_ID_CAMERA and compid <= mavlink.COMP_ID_CAMERA6 then
+        return "Camera"..tostring(compid - mavlink.COMP_ID_CAMERA + 1)
     end
     return "Camera"
 end    
@@ -1019,9 +1019,9 @@ local function drawPrearm()
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(x, y, "Autopilot", CUSTOM_COLOR+MIDSIZE)
     lcd.drawText(x+20, y+25, "checks:", CUSTOM_COLOR+MIDSIZE)
-    if bit32.btest(sensors.present, mavlink.MAV_SYS_STATUS_PREARM_CHECK) then
-        if bit32.btest(sensors.enabled, mavlink.MAV_SYS_STATUS_PREARM_CHECK) then
-            if bit32.btest(sensors.health, mavlink.MAV_SYS_STATUS_PREARM_CHECK) then
+    if bit32.btest(sensors.present, mavlink.SYS_STATUS_PREARM_CHECK) then
+        if bit32.btest(sensors.enabled, mavlink.SYS_STATUS_PREARM_CHECK) then
+            if bit32.btest(sensors.health, mavlink.SYS_STATUS_PREARM_CHECK) then
                 lcd.setColor(CUSTOM_COLOR, p.GREEN)
                 lcd.drawText(x+20+105, y+25, "OK", CUSTOM_COLOR+MIDSIZE)
             else    
@@ -1149,7 +1149,6 @@ local function doPageAutopilot()
     
     drawIsInitializing()
 end  
-
 
 
 ----------------------------------------------------------------------
@@ -2012,9 +2011,81 @@ end
 -- Page Action Draw Class
 ----------------------------------------------------------------------
 
-local function doPageAction()
+local function doDebug()
+    local mem = mavlink.getMemUsed()
+    local stack = mavlink.getStackUsed()
+    local tasks = mavlink.getTaskStats()
+  
+    local x = 10;
+    local y = 20;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(x, y, "Mem", CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "scripts:", CUSTOM_COLOR)
+    lcd.drawText(x, y+40, "widgets:", CUSTOM_COLOR)
+    lcd.drawText(x, y+60, "extra:", CUSTOM_COLOR)
+    lcd.drawText(x, y+80, "total:", CUSTOM_COLOR)
+    lcd.drawText(x, y+100, "heap used:", CUSTOM_COLOR)
+    lcd.drawText(x, y+120, "heap free:", CUSTOM_COLOR)
+     
+    lcd.drawNumber(x+100, y+20, mem.scripts, CUSTOM_COLOR)
+    lcd.drawNumber(x+100, y+40, mem.widgets, CUSTOM_COLOR)
+    lcd.drawNumber(x+100, y+60, mem.extra, CUSTOM_COLOR)
+    lcd.drawNumber(x+100, y+80, mem.total, CUSTOM_COLOR)
+    lcd.drawNumber(x+100, y+100, mem.heap_used, CUSTOM_COLOR)
+    lcd.drawNumber(x+100, y+120, mem.heap_free, CUSTOM_COLOR)
+    
+    x = 220;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(x, y, "Stack", CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "main:", CUSTOM_COLOR)
+    lcd.drawText(x, y+40, "menus:", CUSTOM_COLOR)
+    lcd.drawText(x, y+60, "mixer:", CUSTOM_COLOR)
+    lcd.drawText(x, y+80, "audio:", CUSTOM_COLOR)
+    lcd.drawText(x, y+100, "mavlink:", CUSTOM_COLOR)
+    
+    lcd.drawNumber(x+80, y+20, stack.main_available, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+40, stack.menus_available, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+60, stack.mixer_available, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+80, stack.audio_available, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+100, stack.mavlink_available, CUSTOM_COLOR)
+    
+    lcd.drawNumber(x+140, y+20, stack.main_size, CUSTOM_COLOR)
+    lcd.drawNumber(x+140, y+40, stack.menus_size, CUSTOM_COLOR)
+    lcd.drawNumber(x+140, y+60, stack.mixer_size, CUSTOM_COLOR)
+    lcd.drawNumber(x+140, y+80, stack.audio_size, CUSTOM_COLOR)
+    lcd.drawNumber(x+140, y+100, stack.mavlink_size, CUSTOM_COLOR)
+    
+    x = 220;
+    y = 175;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(x, y, "Task", CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "time:", CUSTOM_COLOR)
+    lcd.drawText(x, y+40, "max:", CUSTOM_COLOR)
+    lcd.drawText(x, y+60, "loop:", CUSTOM_COLOR)
+    
+    lcd.drawNumber(x+80, y+20, tasks.time, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+40, tasks.max, CUSTOM_COLOR)
+    lcd.drawNumber(x+80, y+60, tasks.loop, CUSTOM_COLOR)
+    
+    x = 10;
+    y = 180;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(x+20, y+20, "msg id cnt:", CUSTOM_COLOR)
+    lcd.drawNumber(x+120, y+20, mavlink.getMessageCount(), CUSTOM_COLOR)
+    
+    -- this demonstrates how to use the mavlink api
+    attitude = mavlink.getMessage(mavlink.M_ATTITUDE);
+    if attitude ~= nil then
+        lcd.drawNumber(x+20, y+40, attitude.sysid, CUSTOM_COLOR)
+        lcd.drawNumber(x+20, y+60, attitude.yaw*10.0, CUSTOM_COLOR)
+    else    
+        lcd.drawNumber(x+20, y+40, 0.0, CUSTOM_COLOR)
+    end    
 end  
 
+local function doPageAction()
+    doDebug()
+end
 
 ----------------------------------------------------------------------
 -- InMenu, FullSize Pages
@@ -2079,6 +2150,8 @@ end
 
 local function widgetCreate(zone, options)
     local w = { zone = zone, options = options }
+    -- uncomment in order to use mavlink api
+    -- mavlink.messageEnable(1)
     return w
 end
 
