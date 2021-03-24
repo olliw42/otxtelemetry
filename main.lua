@@ -2223,7 +2223,9 @@ local function widgetRefresh(widget)
         if page < page_min then page = page_min end
     end
     
-    drawNoTelemetry()
+    if pages[page] ~= cPageIdAction then
+      drawNoTelemetry()
+    end    
     
     -- y = 256 is the smallest for normal sized text ??? really ???, no, if there is undersling
     -- normal font is 13 pix height => 243, 256
