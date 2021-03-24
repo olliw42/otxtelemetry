@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.27.rc02 2021-03-24"
+local versionStr = "0.27.1.rc02 2021-03-24"
 
 
 ----------------------------------------------------------------------
@@ -71,6 +71,9 @@ local config_g = {
     
     -- not for you ;)
     disableEvents = false, -- not needed, just to have it safe
+    
+    -- Set to true if you want to see the Debug page, else set to false
+    showDebugPage = false,
 }
 
 
@@ -192,7 +195,7 @@ local pageAutopilotEnabled = true
 local pageActionEnabled = config_g.showActionPage
 local pageCameraEnabled = config_g.showCameraPage
 local pageGimbalEnabled = config_g.showGimbalPage
-
+local pageDebugEnabled = config_g.showDebugPage
 
 local event = 0
 local page = 1
@@ -203,8 +206,10 @@ local cPageIdAutopilot = 1
 local cPageIdAction = 2
 local cPageIdCamera = 3
 local cPageIdGimbal = 4
+local cPageIdDebug = 10
 
 local pages = {}
+if pageDebugEnabled then page_max = page_max+1; pages[page_max] = cPageIdDebug end
 if pageActionEnabled then page_max = page_max+1; pages[page_max] = cPageIdAction end
 if pageAutopilotEnabled then page_max = page_max+1; pages[page_max] = cPageIdAutopilot; page = page_max end
 if pageCameraEnabled then page_max = page_max+1; pages[page_max] = cPageIdCamera end
@@ -2011,7 +2016,15 @@ end
 -- Page Action Draw Class
 ----------------------------------------------------------------------
 
-local function doDebug()
+local function doPageAction()
+end
+
+
+----------------------------------------------------------------------
+-- Page Debug Draw Class
+----------------------------------------------------------------------
+
+local function doPageDebug()
     local mem = mavlink.getMemUsed()
     local stack = mavlink.getStackUsed()
     local tasks = mavlink.getTaskStats()
@@ -2074,6 +2087,7 @@ local function doDebug()
     lcd.drawNumber(x+120, y+20, mavlink.getMessageCount(), CUSTOM_COLOR)
     
     -- this demonstrates how to use the mavlink api
+    mavlink.messageEnable(1) -- we just have to do it once, but hey...
     attitude = mavlink.getMessage(mavlink.M_ATTITUDE);
     if attitude ~= nil then
         lcd.drawNumber(x+20, y+40, attitude.sysid, CUSTOM_COLOR)
@@ -2083,9 +2097,6 @@ local function doDebug()
     end    
 end  
 
-local function doPageAction()
-    doDebug()
-end
 
 ----------------------------------------------------------------------
 -- InMenu, FullSize Pages
@@ -2212,6 +2223,8 @@ local function widgetRefresh(widget)
         doPageGimbal()
     elseif pages[page] == cPageIdAction then
         doPageAction()
+    elseif pages[page] == cPageIdDebug then
+        doPageDebug()
     end  
   
     -- do this post so that the pages can overwrite RTN & SYS use
@@ -2223,7 +2236,7 @@ local function widgetRefresh(widget)
         if page < page_min then page = page_min end
     end
     
-    if pages[page] ~= cPageIdAction then
+    if pages[page] ~= cPageIdDebug then
       drawNoTelemetry()
     end    
     
