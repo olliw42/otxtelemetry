@@ -17,7 +17,7 @@
 -- The draw circle codes were taken from Adafruit's GFX library. THX!
 -- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.27.1.rc02 2021-03-24"
+local versionStr = "0.27.0.rc05 2021-03-27"
 
 
 ----------------------------------------------------------------------
@@ -73,7 +73,7 @@ local config_g = {
     disableEvents = false, -- not needed, just to have it safe
     
     -- Set to true if you want to see the Debug page, else set to false
-    showDebugPage = false,
+    showDebugPage = true, --false,
 }
 
 
@@ -2084,18 +2084,38 @@ local function doPageDebug()
     y = 180;
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     lcd.drawText(x+20, y+20, "msg id cnt:", CUSTOM_COLOR)
-    lcd.drawNumber(x+120, y+20, mavlink.getMessageCount(), CUSTOM_COLOR)
+    lcd.drawNumber(x+120, y+20, mavlink.getInCount(), CUSTOM_COLOR)
     
     -- this demonstrates how to use the mavlink api
-    mavlink.messageEnable(1) -- we just have to do it once, but hey...
-    attitude = mavlink.getMessage(mavlink.M_ATTITUDE);
+    mavlink.enableIn(1) -- we just have to do it once, but hey...
+    mavlink.enableOut(1) -- we just have to do it once, but hey...
+    -- these are all possible ways to call it, don't all do the same though ;)
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE);
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE, 44, 1);
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE, mavlink.getSystemId());
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE, mavlink.getSystemId(), 0);
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE, 0, mavlink.getAutopilotComponentIds );
+    -- attitude = mavlink.getMessage(mavlink.M_ATTITUDE, mavlink.getSystemId(), mavlink.getAutopilotComponentIds );
+    attitude = mavlink.getMessage(mavlink.M_ATTITUDE, mavlink.getAutopilotIds());
     if attitude ~= nil then
         lcd.drawNumber(x+20, y+40, attitude.sysid, CUSTOM_COLOR)
-        lcd.drawNumber(x+20, y+60, attitude.yaw*10.0, CUSTOM_COLOR)
-    else    
+        lcd.drawNumber(x+20, y+60, attitude.yaw*100.0, CUSTOM_COLOR+PREC2)
+        
+        if attitude.updated then
+            -- in principle we should first check isFree() before we send, 
+            -- but for this simple example it doesn't matter
+            local res = mavlink.sendMessage(attitude)
+            if res == nil then
+                lcd.drawText(x+100, y+60, "!", CUSTOM_COLOR)
+            else
+                lcd.drawText(x+100, y+60, "*", CUSTOM_COLOR)
+            end
+        end
+        
+    else
         lcd.drawNumber(x+20, y+40, 0.0, CUSTOM_COLOR)
-    end    
-end  
+    end
+end
 
 
 ----------------------------------------------------------------------
@@ -2162,7 +2182,8 @@ end
 local function widgetCreate(zone, options)
     local w = { zone = zone, options = options }
     -- uncomment in order to use mavlink api
-    -- mavlink.messageEnable(1)
+    -- mavlink.enableIn(1)
+    -- mavlink.enableOut(1)
     return w
 end
 
