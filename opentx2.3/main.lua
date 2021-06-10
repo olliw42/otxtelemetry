@@ -12,12 +12,10 @@
 --
 -- Acknowledgements:
 -- The design of the autopilot page is much inspired by the
--- Yaapu FrSky Telemetry script. Also, its HUD code is used here. THX!
+-- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
--- The draw circle codes were taken from Adafruit's GFX library. THX!
--- https://learn.adafruit.com/adafruit-gfx-graphics-library
 ----------------------------------------------------------------------
-local versionStr = "0.27.0.rc05 2021-03-27"
+local versionStr = "0.27.0 2021-06-10"
 
 
 ----------------------------------------------------------------------
@@ -106,7 +104,22 @@ local event_t16 = {
   OPTION_CANCEL   = EVT_RTN_FIRST,
 }
 
+local event_tx16s = {
+  PAGE_PREVIOUS   = EVT_SYS_FIRST,
+  PAGE_NEXT       = EVT_MODEL_FIRST,
+  BTN_A_LONG      = EVT_RTN_LONG,
+  BTN_A_REPT      = EVT_RTN_REPT,
+  BTN_B_LONG      = EVT_TELEM_LONG,
+  BTN_B_REPT      = EVT_TELEM_REPT,
+  BTN_ENTER_LONG  = EVT_ENTER_LONG,
+  OPTION_PREVIOUS = EVT_VIRTUAL_DEC,
+  OPTION_NEXT     = EVT_VIRTUAL_INC,
+  OPTION_CANCEL   = EVT_RTN_FIRST,
+}
+
+local ver, flavor = getVersion()
 local event_g = event_t16
+if flavor == "tx16s" then event_g = event_tx16s end
 
 
 ----------------------------------------------------------------------
@@ -658,7 +671,7 @@ local function drawHud()
     local maxY = draw.hudY + draw.hudHeight
     local minX = 120
     local maxX = 360
-  
+
     --https://www.rapidtables.com/web/color/RGB_Color.html
     --corn flower blue 	#6495ED 	(100,149,237)
     --sky blue 	#87CEEB 	(135,206,235)
