@@ -1,4 +1,4 @@
-OlliW Telemetry for OpenTx/EdgeTx with MAVLink, Scripts, Hardware, Code and Stuff
+OlliW Telemetry for OpenTx/EdgeTx with MAVLink, Lua Scripts, Hardware, Code and Stuff
 ===========
 
 The project brings native MAVLink telemetry capabilities to OpenTx/EdgeTx.
