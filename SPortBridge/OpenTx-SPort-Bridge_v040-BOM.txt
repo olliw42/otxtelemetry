@@ -1,0 +1,47 @@
+Stückliste exportiert aus C:/Users/Olli/Documents/GitHub/otxtelemetry/SPortBridge/OpenTx-SPort-Bridge_v040.sch am 10.06.2021 18:21
+
+Part            Value                   Device                 Package        Description                          
+BL              BOOT0                   SOLDERJUMPERNO         SJ_2S-NO       Solder Jumper                        
+C1              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C2              10u                     CPOL-EUSMCA            SMC_A          POLARIZED CAPACITOR, European symbol 
+C3              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C4              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C5              10u                     CPOL-EUSMCA            SMC_A          POLARIZED CAPACITOR, European symbol 
+C6              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C7              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C8              10u                     CPOL-EUSMCA            SMC_A          POLARIZED CAPACITOR, European symbol 
+C9              100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C10             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C11             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C12             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C13             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C14             10u                     C-EUC0805              C0805          CAPACITOR, European symbol           
+C15             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+C16             1u                      C-EUC0603              C0603          CAPACITOR, European symbol           
+C17             100n                    C-EUC0603              C0603          CAPACITOR, European symbol           
+D1              PMEG3010ER              DIODE-SCHOTTKYSOD123-W SOD123W-DIODE                                       
+D10             PMEG3010ER              DIODE-SCHOTTKYSOD123-W SOD123W-DIODE                                       
+IC1             stm32F103CX             STM32F10XCXT6          TQFP48         ST STM32F101/103 48pin LQFP          
+IC2             NCP1117ST50             V_REG_LM1117SOT223     SOT223         Voltage Regulator LM1117             
+IC3             NCP1117ST33             V_REG_LM1117SOT223     SOT223         Voltage Regulator LM1117             
+IC4             74AHC1G86               74AHC1G86              SOT23-5-VER1                                        
+IC5             74AHC1G86               74AHC1G86              SOT23-5-VER1                                        
+IC6             BT HC06                 HC06-BASIC             BT_HC05_BASIC                                       
+IC7             ESP32                   ESP32                  ESP-WROOM-32D                                       
+JP1             PINHEAD_4X1             PINHEAD_4X1            PINHEAD_4X1                                         
+JP2             Molex K254 A-4455-BH05x 4455-B05_S             4455-B05       RECEPTACAL                           
+JP3             PINHEAD_4X1             PINHEAD_4X1            PINHEAD_4X1                                         
+JP4             PINHEAD_4X1             PINHEAD_4X1            PINHEAD_4X1                                         
+JP5             PINHEAD_2X1             PINHEAD_2X1            PINHEAD_2X1                                         
+LED1            green                   LED3MM                 LED3MM         LED                                  
+LED2            red                     LED3MM                 LED3MM         LED                                  
+POLOLU-D24V10F5 PINHEAD_5X1WITHOUT      PINHEAD_5X1WITHOUT     PINHEAD_5X1_WO                                      
+Q1              CSTCE8M00G55-R0         RESONATORSMD           RESONATOR-SMD  Resonator                            
+R1              10k                     R-EU_R0603             R0603          RESISTOR, European symbol            
+R2              2.2k                    R-EU_R0603             R0603          RESISTOR, European symbol            
+R3              4.7k                    R-EU_R0603             R0603          RESISTOR, European symbol            
+R4              1k                      R-EU_R0603             R0603          RESISTOR, European symbol            
+R5              10k                     R-EU_R0603             R0603          RESISTOR, European symbol            
+R6              10k                     R-EU_R0603             R0603          RESISTOR, European symbol            
+R7              10k                     R-EU_R0603             R0603          RESISTOR, European symbol            
+R40             1k                      R-EU_R0603             R0603          RESISTOR, European symbol            
