@@ -301,8 +301,8 @@ uint16_t micros(void)
 
 //------------------------------
 // led
-#define GPIO_TOGGLEBIT(x,y) ((x)->BSRR = (((x)->ODR ^ (y)) & (y)) | ((y) << 16))
-
+//#define GPIO_TOGGLEBIT(x,y) ((x)->BSRR = (((x)->ODR ^ (y)) & (y)) | ((y) << 16))
+#define GPIO_TOGGLEBIT(x,y) {uint32_t odr=(x)->ODR; (x)->BSRR=((odr & (y)) << 16)|(~odr & (y));}
 
 #define LED_RCC_APB2Periph_GPIOx    RCC_APB2Periph_GPIOA
 #define LED_GPIOx                   GPIOA
