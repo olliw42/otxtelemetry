@@ -4,7 +4,7 @@
 -- licence: GPL 3.0
 --
 -- Version: see versionStr
--- requires MAVLink-OpenTx version: v27 (@)
+-- requires MAVLink-OpenTx version: v28 (@)
 --
 -- Documentation:
 --
@@ -15,7 +15,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.27.0 2021-06-10"
+local versionStr = "0.28.0 2021-06-18"
 
 
 ----------------------------------------------------------------------
@@ -37,7 +37,7 @@ local config_g = {
     -- else set to ""
     cameraShootSwitch = "sh",
     
-    -- Set to true if camera should be included in prearm check, else set to false
+    -- Set to true if camera should be included in overall prearm check, else set to false
     cameraPrearmCheck = false,
     
     -- Set to a source if you want control the gimbal pitch, else set to ""
@@ -48,7 +48,7 @@ local config_g = {
     -- 2: MAVLink Targeting, 3: RC Targeting, 4: GPS Point Targeting, 5: SysId Targeting
     gimbalDefaultTargetingMode = 3,
     
-    -- Set to true if gimbal should be included in prearm check, else set to false
+    -- Set to true if gimbal should be included in overall prearm check, else set to false
     gimbalPrearmCheck = false,
     
     -- Set to true if you use a gimbal and the ArduPilot flight stack,
@@ -71,7 +71,7 @@ local config_g = {
     disableEvents = false, -- not needed, just to have it safe
     
     -- Set to true if you want to see the Debug page, else set to false
-    showDebugPage = true, --false,
+    showDebugPage = false,
 }
 
 
@@ -119,7 +119,11 @@ local event_tx16s = {
 
 local ver, flavor = getVersion()
 local event_g = event_t16
-if flavor == "tx16s" then event_g = event_tx16s end
+local tx16color = false
+if flavor == "tx16s" then 
+    event_g = event_tx16s 
+    tx16color = true
+end
 
 
 ----------------------------------------------------------------------
@@ -627,6 +631,7 @@ local function drawStatusBar()
     local vehicleClassStr = getVehicleClassStr()
     x = 26
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if tx16color then lcd.setColor(CUSTOM_COLOR, p.LIGHTGREY) end -- GRRR????
     if vehicleClassStr ~= nil then
         lcd.drawText(x, y, vehicleClassStr..":"..model.getInfo().name, CUSTOM_COLOR)
     else
@@ -649,12 +654,14 @@ local function drawStatusBar()
     x = 310
     local txvoltage = string.format("Tx:%.1fv", getValue(getFieldInfo("tx-voltage").id))
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if tx16color then lcd.setColor(CUSTOM_COLOR, p.LIGHTGREY) end -- GRRR????
     lcd.drawText(x, y, txvoltage, CUSTOM_COLOR)
     -- Time
     x = LCD_W - 26
     local time = getDateTime()
     local timestr = string.format("%02d:%02d:%02d", time.hour, time.min, time.sec)
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    if tx16color then lcd.setColor(CUSTOM_COLOR, p.LIGHTGREY) end -- GRRR????
     lcd.drawText(x, y, timestr, CUSTOM_COLOR+RIGHT)  --SMLSIZE => 4
 end
 
