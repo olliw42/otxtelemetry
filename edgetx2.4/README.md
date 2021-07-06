@@ -1,7 +1,7 @@
-OlliW Telemetry Widget Script for OpenTx with MAVLink
+OlliW Telemetry Widget Script for EdgeTx with MAVLink
 ===========
 
-The project brings MAVLink telemetry capabilities to OpenTx.
+The project brings MAVLink telemetry capabilities to EdgeTx.
 
 Project home page: http://www.olliw.eu/2020/olliwtelem
 

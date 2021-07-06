@@ -9,7 +9,7 @@ Discussion thread at rcgroups: https://www.rcgroups.com/forums/showthread.php?35
 
 ## Lua Widget Scripts: Installation
 
-For the moment please visit the project web page for descriptions, or join the discussion thread.
+For the moment please visit the project web page for descriptions, or better, join the discussion thread.
 
 ## External Transmitter Bay MAVLink Bridge
 
