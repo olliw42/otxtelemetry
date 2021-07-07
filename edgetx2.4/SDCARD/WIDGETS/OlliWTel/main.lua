@@ -4,7 +4,8 @@
 -- licence: GPL 3.0
 --
 -- Version: see versionStr
--- requires MAVLink-OpenTx version: v30 (@)
+-- requires MAVLink-OpenTx or MAVLink-EdgeTx version: v30rc06 (@fa29cbb)
+-- (script works for both OpenTx & EdgeTx)
 --
 -- Documentation:
 --
