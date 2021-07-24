@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.30.7 2021-07-24"
+local versionStr = "0.30.8 2021-07-24"
 
 
 ----------------------------------------------------------------------
@@ -117,10 +117,10 @@ local event_tx16s = {
   OPTION_NEXT     = EVT_VIRTUAL_INC,
   OPTION_CANCEL   = EVT_RTN_FIRST,
   
-  TOUCH_PAGE_PREVIOUS = TEVT_WIPE_RIGHT,
-  TOUCH_PAGE_NEXT     = TEVT_WIPE_LEFT,
-  TOUCH_PAGE_DOWN     = TEVT_WIPE_DOWN,
-  TOUCH_PAGE_UP       = TEVT_WIPE_UP,
+  TOUCH_PAGE_PREVIOUS = EVT_TOUCH_WIPE_RIGHT,
+  TOUCH_PAGE_NEXT     = EVT_TOUCH_WIPE_LEFT,
+  TOUCH_PAGE_DOWN     = EVT_TOUCH_WIPE_DOWN,
+  TOUCH_PAGE_UP       = EVT_TOUCH_WIPE_UP,
 }
 
 local ver, flavor = getVersion()
@@ -224,7 +224,7 @@ end
 
 local function touchEventTap(rect)
     if touch == nil then return false end
-    if touch.extEvent == TEVT_TAP and
+    if touch.extEvent == EVT_TOUCH_TAP and
        touch.x >= rect.x and touch.x <= rect.x + rect.w and 
        touch.y >= rect.y and touch.y <= rect.y + rect.h then return true end
     return false
@@ -1445,7 +1445,7 @@ local function doPageCamera()
         camera_menu_touch()
         camera_menu.active = false
         camera_menu_set()
-    elseif touchEvent(TEVT_TAP) then
+    elseif touchEvent(EVT_TOUCH_TAP) then
         if camera_menu.active then
             touch = nil
             camera_menu.active = false
@@ -1783,7 +1783,7 @@ local function doPageGimbal()
         gimbal_menu_popup_touch()
         gimbal_menu.active = false
         gimbal_menu_set() -- take new idx
-    elseif touchEvent(TEVT_TAP) then
+    elseif touchEvent(EVT_TOUCH_TAP) then
         if gimbal_menu.active then
             touch = nil
             gimbal_menu.active = false
