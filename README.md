@@ -9,7 +9,9 @@ Discussion thread at rcgroups: https://www.rcgroups.com/forums/showthread.php?35
 
 ## Lua Widget Scripts: Installation
 
-For the moment please visit the project web page for descriptions, or join the discussion thread.
+The telemetry script works for both OpenTx and EdgeTx firmwares (i.e. you'll find that the SDCARD contents are in fact equal).
+
+For the moment please visit the project web page for descriptions, or better, join the discussion thread.
 
 ## External Transmitter Bay MAVLink Bridge
 

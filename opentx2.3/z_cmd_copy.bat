@@ -1,1 +1,0 @@
-copy main.lua I:\WIDGETS\OlliWTel\
