@@ -4,7 +4,7 @@
 -- licence: GPL 3.0
 --
 -- Version: see versionStr
--- requires MAVLink-OpenTx or MAVLink-EdgeTx version: v30rc06 (@fa29cbb)
+-- requires MAVLink-OpenTx or MAVLink-EdgeTx version: v30
 -- (script works for both OpenTx & EdgeTx)
 --
 -- Documentation:
@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.30.6 2021-07-06"
+local versionStr = "0.30.7 2021-07-24"
 
 
 ----------------------------------------------------------------------
@@ -140,13 +140,13 @@ local soundsPath = "/SOUNDS/OlliwTel/"
 
 
 local function play(file)
+    if not checkWidgetSetup() then return end
     if config_g.disableSound then return end
-    if isInMenu() then return end
     playFile(soundsPath.."en/"..file..".wav")
 end
 
 local function playForce(file)
-    if isInMenu() then return end
+    if not checkWidgetSetup() then return end
     playFile(soundsPath.."en/"..file..".wav")
 end
 
@@ -2078,7 +2078,6 @@ local function doPageInMenu()
     lcd.drawText(LCD_W/2, 125+50, "Version "..versionStr, CUSTOM_COLOR+MIDSIZE+CENTER)
 end
 
-
 local function doPageNeedsFullSize(rect)
     event = 0
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
@@ -2092,6 +2091,21 @@ local function doPageNeedsFullSize(rect)
     lcd.drawText(rect.x+15, rect.y+40, "REQUIRES FULL SCREEN", opt)
     lcd.drawText(rect.x+15, rect.y+65, "Please change widget", opt)
     lcd.drawText(rect.x+15, rect.y+85, "screen selection", opt)
+end
+
+local function doPageMainViewsCountToSmall(rect)
+    event = 0
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawFilledRectangle(rect.x+10, rect.y+10, rect.w-20, rect.h-20, CUSTOM_COLOR)
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawFilledRectangle(rect.x+12, rect.y+12, rect.w-24, rect.h-24, CUSTOM_COLOR)
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(rect.x+15, rect.y+15, "OlliW Telemetry Script", CUSTOM_COLOR)
+    local opt = CUSTOM_COLOR
+    if rect.h < 100 then opt = CUSTOM_COLOR+SMLSIZE end
+    lcd.drawText(rect.x+15, rect.y+40, "NOT FOR MAIN VIEW 1", opt)
+    lcd.drawText(rect.x+15, rect.y+65, "Please add a", opt)
+    lcd.drawText(rect.x+15, rect.y+85, "main view", opt)
 end
 
 
@@ -2137,11 +2151,16 @@ local event_last = 0
 local function widgetRefresh(widget, events)
     if widget.rect.h < 250 then 
         doPageNeedsFullSize(widget.rect)
-        return res
+        return
     end
-    if isInMenu() then 
+    local check = checkWidgetSetup()
+    if bit32.btest(check,2) then
+        doPageMainViewsCountToSmall(widget.rect)
+        return
+    end
+    if bit32.btest(check,1) then
         doPageInMenu()
-        return res
+        return
     end
     lcd.resetBacklightTimeout()
     
