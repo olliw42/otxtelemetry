@@ -13,7 +13,7 @@ local LCD_XMID = draw.xmid
 
 local function drawNoGimbal()
     if mavsdk.isReceiving() and not mavsdk.gimbalIsReceiving() then
-        drawWarningBox("no gimbal")
+        draw:WarningBox("no gimbal")
         return true
     end
     return false
