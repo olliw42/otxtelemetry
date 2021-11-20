@@ -215,7 +215,10 @@ function apdraw:GpsStatusAt(gpsId, x,y, dy)
     else
         local fixstr = "No FIX"
         if gpsfix >= mavlink.GPS_FIX_TYPE_3D_FIX then
-            if mavsdk.txGpsHasPosIntFix() then fixstr = "POS FIX" else fixstr = "3D FIX" end
+            fixstr = "3D FIX"
+            if gpsId == 0 and mavsdk.txGpsHasPosFix() then 
+                if mavsdk.isSendingPosInt() then fixstr = "POS FIX *" else fixstr = "POS FIX" end     
+            end
         end    
         lcd.drawText(x, y+8, fixstr, CUSTOM_COLOR+txtsize1+LEFT) --MIDSIZE+LEFT)
     end

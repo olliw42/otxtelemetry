@@ -5,7 +5,7 @@
 ----------------------------------------------------------------------
 -- Page Debug
 ----------------------------------------------------------------------
-local p = ...
+local p, utils = ...
 
 
 ----------------------------------------------------------------------
@@ -13,6 +13,46 @@ local p = ...
 ----------------------------------------------------------------------
 
 local function doPageDebug()
+    local x = 10;
+    local y = 20;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+  
+    local txgps = getTxGPS()
+    
+    if txgps.fix then 
+        lcd.drawText(x, y, 'FIX', CUSTOM_COLOR)
+    else  
+        lcd.drawText(x, y, 'no FIX', CUSTOM_COLOR)
+    end  
+    lcd.drawNumber(x, y+20, txgps.numsat, CUSTOM_COLOR)
+    lcd.drawNumber(x, y+40, txgps.hdop, CUSTOM_COLOR+PREC2)
+    
+    y = 90
+    lcd.drawNumber(x, y, txgps.lat*1e7, CUSTOM_COLOR)
+    lcd.drawNumber(x, y+20, txgps.lon*1e7, CUSTOM_COLOR)
+    
+    lcd.drawText(x+150, y, utils:LatLonToDms(txgps.lat), CUSTOM_COLOR)
+    lcd.drawText(x+150, y+20, utils:LatLonToDms(txgps.lon,txgps.lat), CUSTOM_COLOR)
+
+    lcd.drawText(x, y+40, "alt (m)", CUSTOM_COLOR)  
+    lcd.drawNumber(x+150, y+40, txgps.alt, CUSTOM_COLOR)
+
+    y = 160
+    lcd.drawText(x, y, "speed (m/s)", CUSTOM_COLOR)  
+    lcd.drawNumber(x+150, y, txgps.speed, CUSTOM_COLOR+PREC2)
+    lcd.drawText(x, y+20, "speed (km/h)", CUSTOM_COLOR)  
+    lcd.drawNumber(x+150, y+20, 3.6*txgps.speed, CUSTOM_COLOR+PREC2)
+    lcd.drawText(x, y+40, "heading (deg)", CUSTOM_COLOR)  
+    lcd.drawNumber(x+150, y+40, txgps.heading, CUSTOM_COLOR+PREC1)
+  
+    local txgps2 = mavsdk.getTxGps()
+    y = 20
+    lcd.drawNumber(x+250, y, txgps2.fix, CUSTOM_COLOR)
+    lcd.drawNumber(x+250, y+40, txgps2.hdop, CUSTOM_COLOR+PREC2)
+    lcd.drawNumber(x+320, y+40, txgps2.vdop, CUSTOM_COLOR+PREC2)
+  
+--[[ 
+  
     local mem = mavlink.getMemUsed()
     local stack = mavlink.getStackUsed()
     local tasks = mavlink.getTaskStats()
@@ -103,6 +143,7 @@ local function doPageDebug()
     else
         lcd.drawNumber(x+20, y+40, 0.0, CUSTOM_COLOR)
     end
+]]    
 end
 
 

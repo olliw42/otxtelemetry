@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.31.03 2021-11-17"
+local versionStr = "0.31.11 2021-11-20"
 
 
 -- libraries: tplay, tutils, tobject, tvehicle, tautopilot, tgimbal, tcamera, taction, tdebug
@@ -593,7 +593,7 @@ local function drawAutopilotPage()
     end    
     
     -- draw Tx GPS status (if you have one)
-    if mavsdk.isTxGpsAvailable() then 
+    if mavsdk.txGpsIsAvailable() then 
         if mavsdk.isGps2Available() then 
             apdraw:GpsStatusAt(0, 2,135, 0) 
         else 
@@ -602,7 +602,7 @@ local function drawAutopilotPage()
     end
     
     -- draw speeds
-    if not mavsdk.isTxGpsAvailable() then
+    if not mavsdk.txGpsIsAvailable() then
         if mavsdk.isGps2Available() then 
             apdraw:SpeedsAt(2, 147) 
         else
@@ -865,7 +865,7 @@ end
 local doPageDebug
 
 if config_g.showDebugPage then
-    doPageDebug = loadLib("tdebug.lua", p)
+    doPageDebug = loadLib("tdebug.lua", p, utils)
 end
 
 
