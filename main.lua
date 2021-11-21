@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.31.11 2021-11-20"
+local versionStr = "0.31.0 2021-11-21"
 
 
 -- libraries: tplay, tutils, tobject, tvehicle, tautopilot, tgimbal, tcamera, taction, tdebug
@@ -29,7 +29,7 @@ local versionStr = "0.31.11 2021-11-20"
 
 local config_g = {
     -- Set to true if you want to see the Action page, else set to false
-    showActionPage = true, --false,
+    showActionPage = true,
     
     -- Set to true if you want to see the Camera page, else set to false
     showCameraPage = true,
@@ -75,7 +75,7 @@ local config_g = {
     disableEvents = false, -- not needed, just to have it safe
     
     -- Set to true if you want to see the Debug page, else set to false
-    showDebugPage = false,
+    showDebugPage = true,
 }
 
 
@@ -586,32 +586,34 @@ local function drawAutopilotPage()
     
     -- draw GPS status
     if not mavsdk.isGps2Available() then 
-        apdraw:GpsStatusAt(1, 2,30, 5); 
+        apdraw:GpsStatusAt(1, 2,30, 5); -- 1 = Gps1
     else
-        apdraw:GpsStatusAt(1, 2,13, 0);
-        apdraw:GpsStatusAt(2, 2,73, 0);
+        apdraw:GpsStatusAt(1, 2,13, 0); -- 1 = Gps1
+        apdraw:GpsStatusAt(2, 2,73, 0); -- 2 = Gps2
     end    
     
     -- draw Tx GPS status (if you have one)
     if mavsdk.txGpsIsAvailable() then 
         if mavsdk.isGps2Available() then 
-            apdraw:GpsStatusAt(0, 2,135, 0) 
+            apdraw:GpsStatusAt(0, 2,135, 0) -- 0 = txGps
         else 
-            apdraw:GpsStatusAt(0, 2,115, 0) 
+            apdraw:GpsStatusAt(0, 2,115, 0) -- 0 = txGps
         end  
     end
     
     -- draw speeds
     if not mavsdk.txGpsIsAvailable() then
         if mavsdk.isGps2Available() then 
-            apdraw:SpeedsAt(2, 147) 
+            apdraw:SpeedsAt(2,147) 
         else
-            apdraw:SpeedsAt(2, 115)
+            apdraw:SpeedsAt(2,115)
         end
     end    
     
     -- draw GPS coordinates in DMS format
-    apdraw:GpsCoordsAt(1, 2,165)
+    if not mavsdk.isGps2Available() then 
+        apdraw:GpsCoordsAt(1, 2,165) -- 1 = Gps1
+    end    
     
     -- draw Battery status
     apdraw:BatteryVoltageAt(draw.xsize, 30)
@@ -626,7 +628,7 @@ local function drawAutopilotPage()
     drawStatusBar2At(200)
     
     -- draw some statustext at the bottom (has black background color)
-    drawStatusTextAt(3, 5,230)
+    drawStatusTextAt(3, 5,230) -- 3 = three lines
 end  
 
 local function drawAllStatusTextMessages()
