@@ -29,13 +29,13 @@ local versionStr = "0.31.0 2021-11-21"
 
 local config_g = {
     -- Set to true if you want to see the Action page, else set to false
-    showActionPage = true,
+    showActionPage = false, --true
     
     -- Set to true if you want to see the Camera page, else set to false
-    showCameraPage = true,
+    showCameraPage = false, --true,
     
     -- Set to true if you want to see the Gimbal page, else set to false
-    showGimbalPage = true,
+    showGimbalPage = false, --true,
     
     -- Set to a (toggle) source if you want control videoon/of & take photo with a switch,
     -- else set to ""
@@ -75,7 +75,7 @@ local config_g = {
     disableEvents = false, -- not needed, just to have it safe
     
     -- Set to true if you want to see the Debug page, else set to false
-    showDebugPage = true,
+    showDebugPage = false,
 }
 
 

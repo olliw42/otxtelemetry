@@ -1,7 +1,7 @@
 OlliW Telemetry for OpenTx/EdgeTx with MAVLink, Lua Scripts, Hardware, Code and Stuff
 ===========
 
-The project brings native MAVLink telemetry capabilities to OpenTx/EdgeTx.
+The project brings native MAVLink telemetry capabilities to OpenTx.
 
 Project home page: http://www.olliw.eu/2020/olliwtelem
 
@@ -9,7 +9,7 @@ Discussion thread at rcgroups: https://www.rcgroups.com/forums/showthread.php?35
 
 ## Lua Widget Scripts: Installation
 
-The telemetry script works for both OpenTx and EdgeTx firmwares (i.e. you'll find that the SDCARD contents are in fact equal).
+The latest telemetry script works with OpenTx (for EdgeTx only "older" firmwares/scripts are available).
 
 For the moment please visit the project web page for descriptions, or better, join the discussion thread.
 
