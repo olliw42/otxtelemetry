@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.31.0 2021-11-21"
+local versionStr = "0.32.0 2022-01-09"
 
 
 -- libraries: tplay, tutils, tobject, tvehicle, tautopilot, tgimbal, tcamera, taction, tdebug
@@ -29,7 +29,7 @@ local versionStr = "0.31.0 2021-11-21"
 
 local config_g = {
     -- Set to true if you want to see the Action page, else set to false
-    showActionPage = true,
+    showActionPage = false, --true,
     
     -- Set to true if you want to see the Camera page, else set to false
     showCameraPage = true,

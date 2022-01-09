@@ -13,10 +13,32 @@ local p, utils = ...
 ----------------------------------------------------------------------
 
 local function doPageDebug()
-    local x = 10;
-    local y = 20;
+    local x = 20;
+    local y = 40;
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
   
+    local LStats = mbridge.getLinkStats()
+    
+    lcd.drawText(x, y, "rssi", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y, LStats.rssi, CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "LQ", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y+20, LStats.LQ, CUSTOM_COLOR)
+    
+    lcd.drawText(x+180, y, "rx rssi", CUSTOM_COLOR)  
+    lcd.drawNumber(x+250, y, LStats.rx_rssi, CUSTOM_COLOR)
+    lcd.drawText(x+180, y+20, "rx LQ", CUSTOM_COLOR)  
+    lcd.drawNumber(x+250, y+20, LStats.rx_LQ, CUSTOM_COLOR)
+    
+    lcd.drawText(x, y+60, "t Bps", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y+60, LStats.LQ_frames_received*32, CUSTOM_COLOR) -- transmit BW
+    lcd.drawText(x, y+80, "r Bps", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y+80, LStats.LQ_valid_received*41, CUSTOM_COLOR) -- receive BW
+    lcd.drawText(x, y+100, "LQ rec", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y+100, LStats.LQ_received, CUSTOM_COLOR)
+    lcd.drawText(x, y+120, "LQ val", CUSTOM_COLOR)  
+    lcd.drawNumber(x+70, y+120, LStats.LQ, CUSTOM_COLOR)
+  
+--[[  
     local txgps = getTxGPS()
     
     if txgps.fix then 
@@ -50,7 +72,7 @@ local function doPageDebug()
     lcd.drawNumber(x+250, y, txgps2.fix, CUSTOM_COLOR)
     lcd.drawNumber(x+250, y+40, txgps2.hdop, CUSTOM_COLOR+PREC2)
     lcd.drawNumber(x+320, y+40, txgps2.vdop, CUSTOM_COLOR+PREC2)
-  
+]]  
 --[[ 
   
     local mem = mavlink.getMemUsed()
