@@ -5,7 +5,7 @@
 ----------------------------------------------------------------------
 -- Page Debug
 ----------------------------------------------------------------------
-local p, utils = ...
+local p, utils, apdraw = ...
 
 
 ----------------------------------------------------------------------
@@ -13,30 +13,142 @@ local p, utils = ...
 ----------------------------------------------------------------------
 
 local function doPageDebug()
-    local x = 20;
-    local y = 40;
-    lcd.setColor(CUSTOM_COLOR, p.WHITE)
-  
+    local x, y;
     local LStats = mbridge.getLinkStats()
     
+    y = 110
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawRectangle(60, y, 100, 50, CUSTOM_COLOR+SOLID)    
+    lcd.drawRectangle(61, y+1, 98, 48, CUSTOM_COLOR+SOLID)    
+    lcd.drawRectangle(300, y, 100, 50, CUSTOM_COLOR+SOLID)    
+    lcd.drawRectangle(301, y+1, 98, 48, CUSTOM_COLOR+SOLID)    
+    lcd.drawLine(177, y+25-10, 280, y+25-10, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(177, y+25-9, 280, y+25-9, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(177, y+25-11, 280, y+25-11, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(180, y+25+10, 283, y+25+10, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(180, y+25+11, 283, y+25+11, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(180, y+25+9, 283, y+25+9, SOLID, CUSTOM_COLOR)
+    lcd.drawFilledTriangle(280+5, y+25-10, 280,y+25-10-5, 280,y+25-10+5, CUSTOM_COLOR+SOLID)
+    lcd.drawFilledTriangle(180-5, y+25+10, 180,y+25+10-5, 180,y+25+10+5, CUSTOM_COLOR+SOLID)
+    
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    
+--    x = 230;
+--    y = 20;
+--    lcd.drawText(x, y, "rx LQ", CUSTOM_COLOR+CENTER)  
+--    lcd.drawNumber(x-2, y+20-4, LStats.rx_LQ, CUSTOM_COLOR+CENTER+MIDSIZE)
+    x = 230;
+    y = 25;
+    lcd.drawText(x-72, y, "rx LQ", CUSTOM_COLOR)  
+    lcd.drawNumber(x, y-6, LStats.rx_LQ, CUSTOM_COLOR+MIDSIZE+CENTER)
+    
+    x = 60;
+    y = 65;
     lcd.drawText(x, y, "rssi", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y, LStats.rssi, CUSTOM_COLOR)
-    lcd.drawText(x, y+20, "LQ", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y+20, LStats.LQ, CUSTOM_COLOR)
+    if LStats.receive_antenna == 0 then
+        lcd.drawNumber(x+60, y, LStats.rssi1_inst, CUSTOM_COLOR)
+    else
+        lcd.drawNumber(x+60, y, LStats.rssi2_inst, CUSTOM_COLOR)
+    end
+    lcd.drawText(x, y+20, "LQ ser", CUSTOM_COLOR)  
+    lcd.drawNumber(x+60, y+20, LStats.LQ, CUSTOM_COLOR)
     
-    lcd.drawText(x+180, y, "rx rssi", CUSTOM_COLOR)  
-    lcd.drawNumber(x+250, y, LStats.rx_rssi, CUSTOM_COLOR)
-    lcd.drawText(x+180, y+20, "rx LQ", CUSTOM_COLOR)  
-    lcd.drawNumber(x+250, y+20, LStats.rx_LQ, CUSTOM_COLOR)
+    if LStats.transmit_antenna == 0 then
+        lcd.drawText(x+75, y+50, "a1", CUSTOM_COLOR)  
+    else    
+        lcd.drawText(x+75, y+50, "a2", CUSTOM_COLOR)  
+    end    
+    if LStats.receive_antenna == 0 then
+        lcd.drawText(x+75, y+70, "a1", CUSTOM_COLOR)  
+    else    
+        lcd.drawText(x+75, y+70, "a2", CUSTOM_COLOR)  
+    end    
     
-    lcd.drawText(x, y+60, "t Bps", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y+60, LStats.LQ_frames_received*32, CUSTOM_COLOR) -- transmit BW
-    lcd.drawText(x, y+80, "r Bps", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y+80, LStats.LQ_valid_received*41, CUSTOM_COLOR) -- receive BW
-    lcd.drawText(x, y+100, "LQ rec", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y+100, LStats.LQ_received, CUSTOM_COLOR)
-    lcd.drawText(x, y+120, "LQ val", CUSTOM_COLOR)  
-    lcd.drawNumber(x+70, y+120, LStats.LQ, CUSTOM_COLOR)
+    x = 300;
+    lcd.drawText(x, y, "rx rssi", CUSTOM_COLOR)  
+    lcd.drawNumber(x+80, y, LStats.rx_rssi_inst, CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "rx LQ ser", CUSTOM_COLOR)  
+    lcd.drawNumber(x+80, y+20, LStats.rx_LQ_serial, CUSTOM_COLOR)
+    
+    if LStats.rx_receive_antenna == 0 then
+        lcd.drawText(x+5, y+50, "a1", CUSTOM_COLOR)  
+    else    
+        lcd.drawText(x+5, y+50, "a2", CUSTOM_COLOR)  
+    end    
+    if LStats.rx_transmit_antenna == 0 then
+        lcd.drawText(x+5, y+70, "a1", CUSTOM_COLOR)  
+    else    
+        lcd.drawText(x+5, y+70, "a2", CUSTOM_COLOR)  
+    end    
+    
+    local t_retry = (100 - LStats.LQ_serial_transmitted)/2
+    local r_retry = (LStats.LQ_valid_received - LStats.LQ_serial_received)/2
+    
+    x = 186;
+    y = 100;
+    lcd.drawText(x, y, "Bps", CUSTOM_COLOR)  
+    lcd.drawNumber(x+55, y, LStats.byte_rate_transmitted*41, CUSTOM_COLOR) -- transmit BW
+    --lcd.drawText(x, y-20, "retry", CUSTOM_COLOR)  
+    --lcd.drawNumber(x+55, y-20, t_retry, CUSTOM_COLOR)
+    y = y + 50;
+    lcd.drawText(x, y, "Bps", CUSTOM_COLOR)  
+    lcd.drawNumber(x+55, y, LStats.byte_rate_received*41, CUSTOM_COLOR) -- receive BW
+    --lcd.drawText(x, y+20, "retry", CUSTOM_COLOR)  
+    --lcd.drawNumber(x+55, y+20, r_retry, CUSTOM_COLOR)
+    
+    x = 40;
+    y = 180;
+    lcd.drawText(x, y, "LQ serial", CUSTOM_COLOR)  
+    lcd.drawNumber(x+80, y, LStats.LQ_serial_received, CUSTOM_COLOR)
+    lcd.drawText(x, y+20, "LQ valid", CUSTOM_COLOR)  
+    lcd.drawNumber(x+80, y+20, LStats.LQ_valid_received, CUSTOM_COLOR)
+    lcd.drawText(x, y+40, "LQ rec", CUSTOM_COLOR)  
+    lcd.drawNumber(x+80, y+40, LStats.LQ_frames_received, CUSTOM_COLOR)
+  
+  
+    local pitch = mavsdk.getAttPitchDeg()
+    local roll = mavsdk.getAttRollDeg()
+  
+    local minY = 180
+    local maxY = 180 + 60
+    local minX = 300
+    local maxX = 300 + 100
+
+    lcd.setColor(CUSTOM_COLOR, p.HUD_SKY)
+    lcd.drawFilledRectangle(minX, minY, maxX-minX, maxY-minY, CUSTOM_COLOR+SOLID)
+    lcd.setColor(CUSTOM_COLOR, p.HUD_EARTH)
+    lcd.drawHudRectangle(pitch, roll, minX, maxX, minY, maxY, CUSTOM_COLOR)
+--[[  
+    local ox, oy
+    local cx, cy
+    if roll == 0 or math.abs(roll) == 180 then
+        ox = (minX+maxX)/2
+        oy = (minY+maxY)/2 + pitch * 1.85
+        cx = 0
+        cy = 21
+    else
+        ox = (minX+maxX)/2 + math.sin(math.rad(roll)) * pitch
+        oy = (minY+maxY)/2 + math.cos(math.rad(roll)) * pitch * 1.85
+        cx = -math.sin(math.rad(roll)) * 21
+        cy = math.cos(math.rad(roll)) * 21
+    end
+
+    lcd.setColor(CUSTOM_COLOR, p.BLACK)
+    for i = 1,8 do
+        apdraw:TiltedLineWithClipping(
+            ox - i*cx, oy + i*cy,
+            -roll,
+            (i % 2 == 0 and 40 or 20), minX + 2, maxX - 2, minY + 10, maxY - 2,
+            DOTTED, CUSTOM_COLOR)
+        apdraw:TiltedLineWithClipping(
+            ox + i*cx, oy - i*cy,
+            -roll,
+            (i % 2 == 0 and 40 or 20), minX + 2, maxX - 2, minY + 10, maxY - 2,
+            DOTTED, CUSTOM_COLOR)
+    end
+]]    
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    lcd.drawFilledRectangle((minX+maxX)/2-15, (minY+maxY)/2, 30, 2, CUSTOM_COLOR)
   
 --[[  
     local txgps = getTxGPS()

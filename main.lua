@@ -867,7 +867,7 @@ end
 local doPageDebug
 
 if config_g.showDebugPage then
-    doPageDebug = loadLib("tdebug.lua", p, utils)
+    doPageDebug = loadLib("tdebug.lua", p, utils, apdraw)
 end
 
 
