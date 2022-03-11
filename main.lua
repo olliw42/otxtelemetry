@@ -16,7 +16,7 @@
 -- Yaapu FrSky Telemetry script. THX!
 -- https://github.com/yaapu/FrskyTelemetryScript
 ----------------------------------------------------------------------
-local versionStr = "0.32.0 2022-01-09"
+local versionStr = "0.32.6 2022-03-11"
 
 
 -- libraries: tplay, tutils, tobject, tvehicle, tautopilot, tgimbal, tcamera, taction, tdebug
@@ -495,11 +495,17 @@ local function drawStatusBar()
         lcd.drawText(x, y, "RS:", CUSTOM_COLOR)
         lcd.drawText(x + 42 -15, y, rssi, CUSTOM_COLOR+LEFT) --CENTER)  
         
-        local radiostatus = mavsdk.getRadioStatus()
-        if radiostatus ~= nil then 
-            local LQ = radiostatus.rssi - radiostatus.noise
-            local remLQ = radiostatus.remrssi - radiostatus.remnoise
-            if remLQ < LQ then LQ = remLQ end
+        local LQ = mavsdk.getRadioLQ()
+        if LQ == nil then
+            local radiostatus = mavsdk.getRadioStatus()
+            if radiostatus ~= nil then
+                -- that's some phenomenology for SiK like radios to get something            
+                LQ = radiostatus.rssi - radiostatus.noise
+                remLQ = radiostatus.remrssi - radiostatus.remnoise
+                if remLQ < LQ then LQ = remLQ end
+            end
+        end
+        if LQ ~= nil then
             lcd.setColor(CUSTOM_COLOR, p.GREEN)
             if LQ < 30 then lcd.setColor(CUSTOM_COLOR, p.RED) end  
             lcd.drawText(x+66, y, "LQ:", CUSTOM_COLOR)
