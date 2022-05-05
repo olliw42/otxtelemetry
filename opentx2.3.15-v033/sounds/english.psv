@@ -1,0 +1,68 @@
+SOUNDS/OlliWTel/en|intro|Olli-W telemetry initialized
+SOUNDS/OlliWTel/en|nomtel|Mavlink telemetry not enabled
+SOUNDS/OlliWTel/en|armed|Armed
+SOUNDS/OlliWTel/en|disarmed|Disarmed
+SOUNDS/OlliWTel/en|telok|Telemetry okaY
+SOUNDS/OlliWTel/en|telno|No telemetry connection
+SOUNDS/OlliWTel/en|tellost|Telemetry lost
+SOUNDS/OlliWTel/en|telrec|Telemetry recovered
+SOUNDS/OlliWTel/en|vidon|video recording started
+SOUNDS/OlliWTel/en|vidoff|video recording stopped
+SOUNDS/OlliWTel/en|photo|photo takeN
+SOUNDS/OlliWTel/en|modvid|camera changed to video mode
+SOUNDS/OlliWTel/en|modpho|camera changed to photo mode
+SOUNDS/OlliWTel/en|modko|camera mode change failed
+SOUNDS/OlliWTel/en|gneut|gimbal changed to Neutral mode
+SOUNDS/OlliWTel/en|grctgt|gimbal changed to RC targeting mode
+SOUNDS/OlliWTel/en|gmavtgt|gimbal changed to Mavlink targeting mode
+SOUNDS/OlliWTel/en|ggpspnt|gimbal changed to GPS Point targeting mode
+SOUNDS/OlliWTel/en|gsysid|gimbal changed to System ID targeting mode
+SOUNDS/OlliWTel/en|gmodko|gimbal mode change failed
+SOUNDS/OlliWTel/en|fmman|Manual flight mode
+SOUNDS/OlliWTel/en|fmcirc|Circle flight mode
+SOUNDS/OlliWTel/en|fmstab|Stabilize flight mode
+SOUNDS/OlliWTel/en|fmtrain|Training flight mode
+SOUNDS/OlliWTel/en|fmacro|Acro flight mode
+SOUNDS/OlliWTel/en|fmfbwa|Fly by wire A flight mode
+SOUNDS/OlliWTel/en|fmfbwb|Fly by wire B flight mode
+SOUNDS/OlliWTel/en|fmcruise|Cruise flight mode
+SOUNDS/OlliWTel/en|fmat|Autotune flight mode
+SOUNDS/OlliWTel/en|fmauto|Auto flight mode
+SOUNDS/OlliWTel/en|fmrtl|Return to home flight mode
+SOUNDS/OlliWTel/en|fmloit|Loiter flight mode
+SOUNDS/OlliWTel/en|fmtakeoff|Takeoff flight mode
+SOUNDS/OlliWTel/en|fmavoid|Avoid A D S B flight mode
+SOUNDS/OlliWTel/en|fmguid|Guided flight mode
+SOUNDS/OlliWTel/en|fminit|Initializing flight mode
+SOUNDS/OlliWTel/en|fmqstab|Q stabilize flight mode
+SOUNDS/OlliWTel/en|fmqhover|Q hover flight mode
+SOUNDS/OlliWTel/en|fmqloit|Q loiter flight mode
+SOUNDS/OlliWTel/en|fmqland|Q land flight mode
+SOUNDS/OlliWTel/en|fmqrtl|Q return to home flight mode
+SOUNDS/OlliWTel/en|fmqat|Q autotune flight mode
+SOUNDS/OlliWTel/en|fmalthld|Altitude Hold flight mode
+SOUNDS/OlliWTel/en|fmland|Land flight mode
+SOUNDS/OlliWTel/en|fmdrift|Drift flight mode
+SOUNDS/OlliWTel/en|fmsport|Sport flight mode
+SOUNDS/OlliWTel/en|fmflip|Flip flight mode
+SOUNDS/OlliWTel/en|fmposhld|Position Hold flight mode
+SOUNDS/OlliWTel/en|fmbrake|Brake flight mode
+SOUNDS/OlliWTel/en|fmthrow|Throw flight mode
+SOUNDS/OlliWTel/en|fmgnogps|Guided no gps flight mode
+SOUNDS/OlliWTel/en|fmsmrtrtl|Smart return to home flight mode
+SOUNDS/OlliWTel/en|fmchanged|Flight mode changed
+SOUNDS/OlliWTel/en|wthr|Throttle WarninG!
+SOUNDS/OlliWTel/en|posfix|Position fix acquired
+SOUNDS/OlliWTel/en|qsccam|cable cam started
+SOUNDS/OlliWTel/en|qsccapr|approaching cable
+SOUNDS/OlliWTel/en|xsdef|xshot changed to Default mode
+SOUNDS/OlliWTel/en|xsneut|xshot changed to Neutral mode
+SOUNDS/OlliWTel/en|xsrecent|xshot changed to Re Center
+SOUNDS/OlliWTel/en|xsrcctrl|xshot changed to Rc Control
+SOUNDS/OlliWTel/en|xsroi|xshot changed to P O I Targeting
+SOUNDS/OlliWTel/en|xscable|xshot changed to CableCam
+SOUNDS/OlliWTel/en|mcalsrt|compass calibration started
+SOUNDS/OlliWTel/en|mcalend|compass calibration finished
+SOUNDS/OlliWTel/en|takeoff|Taking Off
+SOUNDS/OlliWTel/en|xssys|xshot changed to Sys I D Targeting
+SOUNDS/OlliWTel/en|xstme|xshot changed to Target Me
