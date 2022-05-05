@@ -23,17 +23,31 @@ local apCopterFlightMode = {
 }    
 
 
+local apRoverFlightModes = {}
+apRoverFlightModes[0]   = { "Manual",       "fmman" }
+apRoverFlightModes[1]   = { "Acro",         "fmacro" }
+apRoverFlightModes[3]   = { "Steering",     "fmchanged" }
+apRoverFlightModes[4]   = { "Hold",         "fmchanged" }
+apRoverFlightModes[5]   = { "Loiter",       "fmloit" }
+apRoverFlightModes[6]   = { "Follow",       "fmchanged" }
+apRoverFlightModes[7]   = { "Simple",       "fmchanged" }
+apRoverFlightModes[10]  = { "Auto",         "fmauto" }
+apRoverFlightModes[11]  = { "RTL",          "fmrtl" }
+apRoverFlightModes[12]  = { "Smart RTL",    "fmsmrtrtl" }
+apRoverFlightModes[15]  = { "Guided",       "fmguid" }
+apRoverFlightModes[16]  = { "Initialising", "fmchanged" }
+
 local apPlaneFlightModes = {}
 apPlaneFlightModes[0]   = { "Manual",       "fmman" }
 apPlaneFlightModes[1]   = { "Circle",       "fmcirc" }
 apPlaneFlightModes[2]   = { "Stabilize",    "fmstab" }
 apPlaneFlightModes[3]   = { "Training",     "fmtrain" }
-apPlaneFlightModes[4]   = { "ACRO",         "fmacro" }
+apPlaneFlightModes[4]   = { "Acro",         "fmacro" }
 apPlaneFlightModes[5]   = { "Fly by Wire A", "fmfbwa" }
 apPlaneFlightModes[6]   = { "Fly by Wire B", "fmfbwb" }
 apPlaneFlightModes[7]   = { "Cruise",       "fmcruise" }
 apPlaneFlightModes[8]   = { "Autotune",     "fmat" }
-apPlaneFlightModes[10]  = { "Auto",         "fmat" }
+apPlaneFlightModes[10]  = { "Auto",         "fmauto" }
 apPlaneFlightModes[11]  = { "RTL",          "fmrtl" }
 apPlaneFlightModes[12]  = { "Loiter",       "fmloit" }
 apPlaneFlightModes[13]  = { "Take Off",     "fmtakeoff" }
@@ -47,6 +61,8 @@ apPlaneFlightModes[20]  = { "QLand",        "fmqland" }
 apPlaneFlightModes[21]  = { "QRTL",         "fmqrtl" }
 apPlaneFlightModes[22]  = { "QAutotune",    "fmqat" }
 apPlaneFlightModes[23]  = { "QAcro",        "fmchanged" }
+apPlaneFlightModes[23]  = { "Thermal",      "fmchanged" }
+apPlaneFlightModes[24]  = { "Loiter Alt QLand", "fmchanged" }
 
 local apCopterFlightModes = {}
 apCopterFlightModes[0]  = { "Stabilize",    "fmstab" }
@@ -73,16 +89,20 @@ apCopterFlightModes[23] = { "Follow",       "fmchanged" }
 apCopterFlightModes[24] = { "ZigZag",       "fmchanged" }
 apCopterFlightModes[25] = { "SystemId",     "fmchanged" }
 apCopterFlightModes[26] = { "Autorotate",   "fmchanged" }
+apCopterFlightModes[27] = { "Auto RTL",     "fmchanged" }
+apCopterFlightModes[28] = { "Turtle",       "fmchanged" }
 
 
 local function getFlightModeStr()
     local fm = mavsdk.getFlightMode();
     local vc = mavsdk.getVehicleClass();
-    local fmstr
+    local fmstr = nil
     if vc == mavsdk.VEHICLECLASS_COPTER then
         fmstr = apCopterFlightModes[fm][1]
     elseif vc == mavsdk.VEHICLECLASS_PLANE then    
         fmstr = apPlaneFlightModes[fm][1]
+    elseif vc == mavsdk.VEHICLECLASS_ROVER then    
+        fmstr = apRoverFlightModes[fm][1]
     end    
     if fmstr == nil then fmstr = "unknown" end
     return fmstr
@@ -97,6 +117,8 @@ local function getFlightModeSound()
         fmsound = apCopterFlightModes[fm][2]
     elseif vc == mavsdk.VEHICLECLASS_PLANE then    
         fmsound = apPlaneFlightModes[fm][2]
+    elseif vc == mavsdk.VEHICLECLASS_ROVER then    
+        fmsound = apRoverFlightModes[fm][2]
     end
     return fmsound
 end
