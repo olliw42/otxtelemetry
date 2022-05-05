@@ -16,7 +16,13 @@ local function doPageDebug()
     local x, y;
     local LStats = mbridge.getLinkStats()
     
-    y = 110
+    x = 255;
+    y = 25;
+    lcd.setColor(CUSTOM_COLOR, p.WHITE)
+    lcd.drawText(x-72, y, "rx LQ", CUSTOM_COLOR)  
+    lcd.drawNumber(x, y-6, LStats.rx_LQ, CUSTOM_COLOR+MIDSIZE+CENTER)
+    
+    y = 90 --110
     lcd.setColor(CUSTOM_COLOR, p.RED)
     lcd.drawRectangle(60, y, 100, 50, CUSTOM_COLOR+SOLID)    
     lcd.drawRectangle(61, y+1, 98, 48, CUSTOM_COLOR+SOLID)    
@@ -30,20 +36,10 @@ local function doPageDebug()
     lcd.drawLine(180, y+25+9, 283, y+25+9, SOLID, CUSTOM_COLOR)
     lcd.drawFilledTriangle(280+5, y+25-10, 280,y+25-10-5, 280,y+25-10+5, CUSTOM_COLOR+SOLID)
     lcd.drawFilledTriangle(180-5, y+25+10, 180,y+25+10-5, 180,y+25+10+5, CUSTOM_COLOR+SOLID)
-    
     lcd.setColor(CUSTOM_COLOR, p.WHITE)
     
---    x = 230;
---    y = 20;
---    lcd.drawText(x, y, "rx LQ", CUSTOM_COLOR+CENTER)  
---    lcd.drawNumber(x-2, y+20-4, LStats.rx_LQ, CUSTOM_COLOR+CENTER+MIDSIZE)
-    x = 230;
-    y = 25;
-    lcd.drawText(x-72, y, "rx LQ", CUSTOM_COLOR)  
-    lcd.drawNumber(x, y-6, LStats.rx_LQ, CUSTOM_COLOR+MIDSIZE+CENTER)
-    
     x = 60;
-    y = 65;
+    y = y - 45;
     lcd.drawText(x, y, "rssi", CUSTOM_COLOR)  
     if LStats.receive_antenna == 0 then
         lcd.drawNumber(x+60, y, LStats.rssi1_inst, CUSTOM_COLOR)
@@ -85,7 +81,7 @@ local function doPageDebug()
     local r_retry = (LStats.LQ_valid_received - LStats.LQ_serial_received)/2
     
     x = 186;
-    y = 100;
+    y = y + 35;
     lcd.drawText(x, y, "Bps", CUSTOM_COLOR)  
     lcd.drawNumber(x+55, y, LStats.byte_rate_transmitted*41, CUSTOM_COLOR) -- transmit BW
     --lcd.drawText(x, y-20, "retry", CUSTOM_COLOR)  
@@ -95,7 +91,64 @@ local function doPageDebug()
     lcd.drawNumber(x+55, y, LStats.byte_rate_received*41, CUSTOM_COLOR) -- receive BW
     --lcd.drawText(x, y+20, "retry", CUSTOM_COLOR)  
     --lcd.drawNumber(x+55, y+20, r_retry, CUSTOM_COLOR)
+  
+    -- RSI spektrum graph
+    local LRssi = mbridge.getRssiLists()
+    if LRssi == nil then return end
     
+    x = 70
+    y = 260
+    lcd.setColor(CUSTOM_COLOR, p.LIGHTGREY)
+    lcd.drawLine(x - 10, y, x + 23*15 + 10, y, SOLID, CUSTOM_COLOR)
+    lcd.drawLine(x - 10, y - (110 - 90), x + 23*15 + 10, y - (110 - 90), SOLID, CUSTOM_COLOR)
+    lcd.drawLine(x - 10, y - (110 - 50), x + 23*15 + 10, y - (110 - 50), SOLID, CUSTOM_COLOR)
+    lcd.drawText(x-35, y-10, "-110", CUSTOM_COLOR+SMLSIZE)
+    lcd.drawText(x-35, y-10-20, "-90", CUSTOM_COLOR+SMLSIZE)
+    lcd.drawText(x-35, y-10-60, "-50", CUSTOM_COLOR+SMLSIZE)
+    
+    lcd.setColor(CUSTOM_COLOR, p.YELLOW)
+    for i = 0,LRssi.fhss_cnt-1 do
+      local r = LRssi.rssi1[i]
+      if r > 120 then 
+        lcd.drawFilledRectangle(x + i*15 - 1, y - 1, 3, 5, CUSTOM_COLOR+SOLID)
+      else
+        if r > -40 then r = -40 end
+        r = 110 + r 
+        lcd.drawLine(x + i*15, y, x + i*15, y - r, SOLID, CUSTOM_COLOR)
+      end  
+    end      
+    
+    lcd.setColor(CUSTOM_COLOR, p.RED)
+    for i = 0,LRssi.fhss_cnt-1 do
+      local r = LRssi.rssi2[i]
+      if r > 120 then 
+        lcd.drawFilledRectangle(x+3 + i*15 - 1, y - 1, 3, 5, CUSTOM_COLOR+SOLID)
+      else 
+        if r > -40 then r = -40 end
+        r = 110 + r 
+        lcd.drawLine(x+3 + i*15, y, x+3 + i*15, y - r, SOLID, CUSTOM_COLOR)
+      end  
+    end
+
+--[[    
+    for i = 0,LRssi.fhss_cnt-1 do
+      if LRssi.rx_antenna[i] == 0 then
+        lcd.setColor(CUSTOM_COLOR, p.YELLOW)
+      else
+        lcd.setColor(CUSTOM_COLOR, p.RED)
+      end 
+      local r = LRssi.rx_rssi[i]
+      if r > 120 then 
+        lcd.drawFilledRectangle(x + i*15 - 1, y - 1, 3, 5, CUSTOM_COLOR+SOLID)
+      else 
+        if r > -40 then r = -40 end
+        r = 110 + r 
+        lcd.drawLine(x + i*15, y, x + i*15, y - r, SOLID, CUSTOM_COLOR)
+      end  
+    end      
+]]  
+  
+--[[  
     x = 40;
     y = 180;
     lcd.drawText(x, y, "LQ serial", CUSTOM_COLOR)  
@@ -104,8 +157,7 @@ local function doPageDebug()
     lcd.drawNumber(x+80, y+20, LStats.LQ_valid_received, CUSTOM_COLOR)
     lcd.drawText(x, y+40, "LQ rec", CUSTOM_COLOR)  
     lcd.drawNumber(x+80, y+40, LStats.LQ_frames_received, CUSTOM_COLOR)
-  
-  
+    
     local pitch = mavsdk.getAttPitchDeg()
     local roll = mavsdk.getAttRollDeg()
   
@@ -118,6 +170,8 @@ local function doPageDebug()
     lcd.drawFilledRectangle(minX, minY, maxX-minX, maxY-minY, CUSTOM_COLOR+SOLID)
     lcd.setColor(CUSTOM_COLOR, p.HUD_EARTH)
     lcd.drawHudRectangle(pitch, roll, minX, maxX, minY, maxY, CUSTOM_COLOR)
+]]    
+    
 --[[  
     local ox, oy
     local cx, cy
@@ -146,9 +200,10 @@ local function doPageDebug()
             (i % 2 == 0 and 40 or 20), minX + 2, maxX - 2, minY + 10, maxY - 2,
             DOTTED, CUSTOM_COLOR)
     end
-]]    
+
     lcd.setColor(CUSTOM_COLOR, p.RED)
     lcd.drawFilledRectangle((minX+maxX)/2-15, (minY+maxY)/2, 30, 2, CUSTOM_COLOR)
+]]  
   
 --[[  
     local txgps = getTxGPS()
