@@ -1,3 +1,11 @@
+**LEGACY LEGACY LEGACY**
+
+**This repository is legacy and deprecated.**
+
+Please see https://github.com/olliw42/mTX for the current location of the project and the OlliW Telemetry for mTx Lua script.
+
+-----------
+
 OlliW Telemetry for OpenTx/EdgeTx with MAVLink, Lua Scripts, Hardware, Code and Stuff
 ===========
 
